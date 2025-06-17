@@ -20,7 +20,8 @@ class PermissionHandler(private val context: Context) {
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
             Manifest.permission.RECORD_AUDIO,
-            Manifest.permission.MODIFY_AUDIO_SETTINGS
+            Manifest.permission.MODIFY_AUDIO_SETTINGS,
+            Manifest.permission.READ_EXTERNAL_STORAGE
         )
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

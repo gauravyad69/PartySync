@@ -1,5 +1,6 @@
 package io.github.gauravyad69.speakershare.network.wifi
 
+import android.Manifest
 import android.content.Context
 import android.content.IntentFilter
 import android.net.wifi.p2p.WifiP2pConfig
@@ -8,6 +9,7 @@ import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
 import android.net.wifi.p2p.WifiP2pManager.Channel
 import android.util.Log
+import androidx.annotation.RequiresPermission
 import io.github.gauravyad69.speakershare.network.ConnectionState
 import io.github.gauravyad69.speakershare.network.ConnectionType
 import io.github.gauravyad69.speakershare.network.NetworkConnection
@@ -17,7 +19,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.ServerSocket
@@ -58,6 +59,7 @@ class WiFiDirectConnection(
         addAction(WifiP2pManager.WIFI_P2P_THIS_DEVICE_CHANGED_ACTION)
     }
     
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     override suspend fun startHost(roomName: String): Result<String> {
         return try {
             _connectionState.value = ConnectionState.Connecting
@@ -86,6 +88,7 @@ class WiFiDirectConnection(
         }
     }
     
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     override suspend fun discoverHosts(): Flow<List<NetworkDevice>> {
         registerBroadcastReceiver()
         
@@ -100,9 +103,10 @@ class WiFiDirectConnection(
             }
         })
         
-        return discoveredPeers.asStateFlow().distinctUntilChanged()
+        return discoveredPeers.asStateFlow()
     }
     
+    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     override suspend fun connectToHost(device: NetworkDevice): Result<Unit> {
         return try {
             _connectionState.value = ConnectionState.Connecting

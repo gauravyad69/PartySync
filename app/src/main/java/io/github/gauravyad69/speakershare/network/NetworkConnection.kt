@@ -2,9 +2,9 @@ package io.github.gauravyad69.speakershare.network
 
 import kotlinx.coroutines.flow.Flow
 
-sealed class ConnectionType {
-    object WiFiDirect : ConnectionType()
-    object LocalHotspot : ConnectionType()
+enum class ConnectionType(val displayName: String) {
+    WiFiDirect("WiFi Direct"),
+    LocalHotspot("Local Hotspot")
 }
 
 sealed class ConnectionState {

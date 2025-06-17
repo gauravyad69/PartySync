@@ -2,14 +2,16 @@ package io.github.gauravyad69.speakershare.ui.screens
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -36,14 +38,14 @@ fun HostScreen(
     
     var showPermissionDialog by remember { mutableStateOf(false) }
     
-    // Sample music tracks for demo
+    // Updated sample tracks using your test_music.mp3
     val sampleTracks = remember {
         listOf(
             AudioTrack(
-                id = "1",
-                title = "Sample Song 1",
+                id = "test_music",
+                title = "Test Music",
                 artist = "Demo Artist",
-                uri = "android.resource://io.github.gauravyad69.speakershare/raw/sample_song", // You'll need to add this
+                uri = "android.resource://io.github.gauravyad69.speakershare/raw/test_music",
                 duration = 180000L
             )
         )
@@ -75,7 +77,7 @@ fun HostScreen(
             actions = {
                 if (uiState.isHosting) {
                     IconButton(onClick = { viewModel.stopHosting() }) {
-                        Icon(Icons.Default.Stop, contentDescription = "Stop Hosting")
+                        Icon(Icons.Default.Clear, contentDescription = "Stop Hosting")
                     }
                 }
             }
@@ -224,9 +226,9 @@ fun HostScreen(
                                 Text("Now Playing", style = MaterialTheme.typography.titleMedium)
                                 Spacer(modifier = Modifier.height(8.dp))
                                 
-                                Text(uiState.currentTrack.title)
+                                Text(uiState.currentTrack!!.title)
                                 Text(
-                                    uiState.currentTrack.artist,
+                                    uiState.currentTrack!!.artist,
                                     style = MaterialTheme.typography.bodySmall
                                 )
                                 

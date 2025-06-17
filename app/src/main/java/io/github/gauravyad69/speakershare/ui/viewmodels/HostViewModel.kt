@@ -140,7 +140,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     
     private fun observeConnectionState(connection: NetworkConnection) {
         viewModelScope.launch {
-            connection.connectionState.collectLatest { state ->
+            connection.connectionState.collectLatest { state: ConnectionState ->
                 _uiState.value = _uiState.value.copy(connectionState = state)
             }
         }
@@ -148,7 +148,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     
     private fun observePlaybackState() {
         viewModelScope.launch {
-            audioStreamer.getPlaybackState().collectLatest { playback ->
+            audioStreamer.getPlaybackState().collectLatest { playback: SyncedPlayback ->
                 _uiState.value = _uiState.value.copy(playbackState = playback)
             }
         }
