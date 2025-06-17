@@ -12,6 +12,8 @@ import io.github.gauravyad69.speakershare.network.ConnectionType
 import io.github.gauravyad69.speakershare.network.NetworkConnection
 import io.github.gauravyad69.speakershare.network.NetworkManager
 import io.github.gauravyad69.speakershare.sync.SyncManager
+import io.github.gauravyad69.speakershare.utils.DeviceConfigManager
+import io.github.gauravyad69.speakershare.utils.DeviceStatus
 import io.github.gauravyad69.speakershare.utils.PermissionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,6 +37,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     private val networkManager = NetworkManager(application)
     private val audioStreamer = ExoPlayerAudioStreamer(application)
     private val permissionHandler = PermissionHandler(application)
+    private val deviceConfigManager = DeviceConfigManager(application) // Add this
     
     private var currentConnection: NetworkConnection? = null
     private var syncManager: SyncManager? = null
@@ -45,6 +48,110 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     init {
         checkPermissions()
         observePlaybackState()
+    }
+    
+    // Add this function to get device status
+    fun getDeviceStatus(): DeviceStatus {
+        return deviceConfigManager.getDeviceStatus()
+    }
+    
+    // Update startHosting to prepare device automatically
+    fun startHosting() {
+        Log.d("HostViewModel", "startHosting called - hasPermissions: ${_uiState.value.hasPermissions}")
+        
+        if (!permissionHandler.hasAllPermissions()) {
+            Log.w("HostViewModel", "Cannot start hosting - missing permissions")
+            checkPermissions()
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                
+                // Step 1: Prepare device for the selected connection type
+                val preparationResult = when (_uiState.value.selectedConnectionType) {
+                    ConnectionType.LocalHotspot -> {
+                        Log.d("HostViewModel", "Preparing device for Local Hotspot...")
+                        deviceConfigManager.prepareForLocalHotspot()
+                    }
+                    ConnectionType.WiFiDirect -> {
+                        Log.d("HostViewModel", "Preparing device for WiFi Direct...")
+                        deviceConfigManager.prepareForWiFiDirect()
+                    }
+                }
+                
+                if (preparationResult.isFailure) {
+                    val error = preparationResult.exceptionOrNull()
+                    Log.e("HostViewModel", "Device preparation failed", error)
+                    _uiState.value = _uiState.value.copy(
+                        connectionState = ConnectionState.Error(error?.message ?: "Failed to prepare device")
+                    )
+                    return@launch
+                }
+                
+                // Step 2: Create connection and start hosting
+                val connection = networkManager.createConnection(_uiState.value.selectedConnectionType)
+                currentConnection = connection
+                
+                observeConnectionState(connection)
+                
+                val roomName = _uiState.value.roomName.ifEmpty { "Room_${System.currentTimeMillis()}" }
+                Log.d("HostViewModel", "Attempting to start host with connection type: ${_uiState.value.selectedConnectionType}")
+                
+                val result = connection.startHost(roomName)
+                
+                if (result.isSuccess) {
+                    Log.d("HostViewModel", "Host started successfully")
+                    _uiState.value = _uiState.value.copy(isHosting = true)
+                    
+                    syncManager = SyncManager(
+                        networkConnection = connection,
+                        audioStreamer = audioStreamer,
+                        isHost = true,
+                        scope = viewModelScope
+                    )
+                } else {
+                    val error = result.exceptionOrNull()
+                    Log.e("HostViewModel", "Failed to start host", error)
+                    _uiState.value = _uiState.value.copy(
+                        connectionState = ConnectionState.Error(error?.message ?: "Failed to start hosting")
+                    )
+                }
+            } catch (e: Exception) {
+                Log.e("HostViewModel", "Error starting host", e)
+                _uiState.value = _uiState.value.copy(
+                    connectionState = ConnectionState.Error(e.message ?: "Unknown error")
+                )
+            }
+        }
+    }
+    
+    // Add function to manually prepare device
+    fun prepareDevice() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                
+                val result = when (_uiState.value.selectedConnectionType) {
+                    ConnectionType.LocalHotspot -> deviceConfigManager.prepareForLocalHotspot()
+                    ConnectionType.WiFiDirect -> deviceConfigManager.prepareForWiFiDirect()
+                }
+                
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Disconnected)
+                } else {
+                    val error = result.exceptionOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        connectionState = ConnectionState.Error(error?.message ?: "Failed to prepare device")
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    connectionState = ConnectionState.Error(e.message ?: "Unknown error")
+                )
+            }
+        }
     }
     
      private fun checkPermissions() {
@@ -85,74 +192,6 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(selectedConnectionType = type)
     }
     
-    fun startHosting() {
-        Log.d("HostViewModel", "startHosting called - hasPermissions: ${_uiState.value.hasPermissions}")
-        
-        if (!permissionHandler.hasAllPermissions()) {
-            Log.w("HostViewModel", "Cannot start hosting - missing permissions")
-            checkPermissions() // Force recheck
-            return
-        }
-        
-        viewModelScope.launch {
-            try {
-                // Remove this line - _connectionState doesn't exist in ViewModel
-                // _connectionState.value = ConnectionState.Connecting
-                
-                // Instead, update the UI state directly
-                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
-                
-                val connection = networkManager.createConnection(_uiState.value.selectedConnectionType)
-                currentConnection = connection
-                
-                observeConnectionState(connection)
-                
-                val roomName = _uiState.value.roomName.ifEmpty { "Room_${System.currentTimeMillis()}" }
-                Log.d("HostViewModel", "Attempting to start host with connection type: ${_uiState.value.selectedConnectionType}")
-                
-                val result = connection.startHost(roomName)
-                
-                if (result.isSuccess) {
-                    Log.d("HostViewModel", "Host started successfully")
-                    _uiState.value = _uiState.value.copy(isHosting = true)
-                    
-                    syncManager = SyncManager(
-                        networkConnection = connection,
-                        audioStreamer = audioStreamer,
-                        isHost = true,
-                        scope = viewModelScope
-                    )
-                } else {
-                    val error = result.exceptionOrNull()
-                    Log.e("HostViewModel", "Failed to start host", error)
-                    _uiState.value = _uiState.value.copy(
-                        connectionState = ConnectionState.Error(error?.message ?: "Failed to start hosting")
-                    )
-                }
-            } catch (e: Exception) {
-                Log.e("HostViewModel", "Error starting host", e)
-                _uiState.value = _uiState.value.copy(
-                    connectionState = ConnectionState.Error(e.message ?: "Unknown error")
-                )
-            }
-        }
-    }
-    
-    // Add a function to reset connection state
-fun resetConnectionState() {
-    _uiState.value = _uiState.value.copy(
-        connectionState = ConnectionState.Disconnected,
-        isHosting = false
-    )
-}
-
-// Update switchToLocalHotspot to also reset state
-fun switchToLocalHotspot() {
-    Log.d("HostViewModel", "Switching to Local Hotspot due to WiFi Direct failure")
-    resetConnectionState()
-    updateConnectionType(ConnectionType.LocalHotspot)
-}
-
     fun stopHosting() {
         viewModelScope.launch {
             networkManager.disconnect()

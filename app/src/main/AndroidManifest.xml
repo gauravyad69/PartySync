@@ -31,8 +31,12 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" 
         tools:targetApi="tiramisu" />
     
-    <!-- Hotspot permission -->
+    <!-- Hotspot and WiFi management permissions -->
     <uses-permission android:name="android.permission.WRITE_SETTINGS" 
+        tools:ignore="ProtectedPermissions" />
+    
+    <!-- For Android 10+ WiFi management -->
+    <uses-permission android:name="android.permission.NETWORK_SETTINGS" 
         tools:ignore="ProtectedPermissions" />
 
     <application

@@ -7,10 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,6 +19,7 @@ import io.github.gauravyad69.speakershare.audio.AudioTrack
 import io.github.gauravyad69.speakershare.network.ConnectionState
 import io.github.gauravyad69.speakershare.network.ConnectionType
 import io.github.gauravyad69.speakershare.ui.viewmodels.HostViewModel
+import io.github.gauravyad69.speakershare.utils.DeviceStatus
 import io.github.gauravyad69.speakershare.utils.PermissionHandler
 import io.github.gauravyad69.speakershare.utils.RequestPermissions
 
@@ -141,6 +139,130 @@ fun HostScreen(
                             ) {
                                 Text("Refresh")
                             }
+                        }
+                    }
+                }
+            }
+            
+            // Device status card
+            item {
+                val deviceStatus = viewModel.getDeviceStatus()
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (deviceStatus.isOptimal(uiState.selectedConnectionType)) 
+                            MaterialTheme.colorScheme.primaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.secondaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "Device Status",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // WiFi Status - Using Signal Wifi icons instead
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (deviceStatus.wifiEnabled) Icons.Default.Wifi else Icons.Default.WifiOff,
+                                contentDescription = "WiFi",
+                                tint = if (deviceStatus.wifiEnabled) 
+                                    MaterialTheme.colorScheme.primary 
+                                else 
+                                    MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("WiFi: ${if (deviceStatus.wifiEnabled) "Enabled" else "Disabled"}")
+                        }
+                        
+                        // Connection Status - Using Signal Wifi icons
+                        if (deviceStatus.connectedToWiFi) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Icons.Default.Wifi,
+                                    contentDescription = "Connected",
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Connected to: ${deviceStatus.connectedNetworkName ?: "Unknown"}")
+                            }
+                        }
+                        
+                        // Feature Support
+                        Text(
+                            "Features: ${if (deviceStatus.wifiDirectSupported) "WiFi Direct ✓" else "WiFi Direct ✗"} | ${if (deviceStatus.hotspotSupported) "Hotspot ✓" else "Hotspot ✗"}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        
+                        // Show optimization status
+                        val isOptimal = deviceStatus.isOptimal(uiState.selectedConnectionType)
+                        if (!isOptimal) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            val recommendation = when (uiState.selectedConnectionType) {
+                                ConnectionType.LocalHotspot -> {
+                                    if (deviceStatus.connectedToWiFi) {
+                                        "For better hotspot performance, disconnect from WiFi networks"
+                                    } else {
+                                        "Device is ready for Local Hotspot"
+                                    }
+                                }
+                                ConnectionType.WiFiDirect -> {
+                                    if (!deviceStatus.wifiDirectSupported) {
+                                        "WiFi Direct is not supported on this device"
+                                    } else if (deviceStatus.connectedToWiFi) {
+                                        "For better WiFi Direct performance, disconnect from WiFi networks"
+                                    } else {
+                                        "Device is ready for WiFi Direct"
+                                    }
+                                }
+                            }
+                            
+                            Text(
+                                "💡 $recommendation",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            if (deviceStatus.connectedToWiFi) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { viewModel.prepareDevice() },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = uiState.connectionState != ConnectionState.Connecting
+                                ) {
+                                    if (uiState.connectionState == ConnectionState.Connecting) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Preparing...")
+                                    } else {
+                                        Text("Optimize Device Settings")
+                                    }
+                                }
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "✅ Device is optimally configured for ${uiState.selectedConnectionType.displayName}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }
@@ -440,7 +562,7 @@ fun HostScreen(
                                         }
                                     ) {
                                         Icon(
-                                            if (isPlaying) Icons.Default.Menu else Icons.Default.PlayArrow,
+                                            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                                             contentDescription = if (isPlaying) "Pause" else "Play"
                                         )
                                     }
@@ -466,6 +588,19 @@ fun HostScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+// Add extension function for DeviceStatus
+@Composable
+private fun DeviceStatus.isOptimal(connectionType: ConnectionType): Boolean {
+    return when (connectionType) {
+        ConnectionType.LocalHotspot -> {
+            wifiEnabled && !connectedToWiFi && hotspotSupported
+        }
+        ConnectionType.WiFiDirect -> {
+            wifiEnabled && wifiDirectSupported
         }
     }
 }
