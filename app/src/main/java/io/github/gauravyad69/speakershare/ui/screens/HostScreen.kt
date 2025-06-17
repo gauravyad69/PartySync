@@ -206,21 +206,32 @@ fun HostScreen(
                         
                         Spacer(modifier = Modifier.height(8.dp))
                         
-                        // WiFi Status
+                        // WiFi Status - different messaging for different connection types
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
                                 if (deviceStatus.wifiEnabled) Octicons.Broadcast24 else Octicons.Stop24,
                                 contentDescription = "WiFi",
-                                tint = if (deviceStatus.wifiEnabled) 
-                                    MaterialTheme.colorScheme.primary 
-                                else 
-                                    MaterialTheme.colorScheme.error,
+                                tint = when {
+                                    uiState.selectedConnectionType == ConnectionType.WiFiDirect && !deviceStatus.wifiEnabled -> MaterialTheme.colorScheme.error
+                                    uiState.selectedConnectionType == ConnectionType.LocalHotspot -> MaterialTheme.colorScheme.onSurfaceVariant // Neutral for hotspot
+                                    else -> MaterialTheme.colorScheme.primary
+                                },
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("WiFi: ${if (deviceStatus.wifiEnabled) "Enabled" else "Disabled"}")
+                            
+                            // Add explanation for hotspot mode
+                            if (uiState.selectedConnectionType == ConnectionType.LocalHotspot) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "(not required for hotspot)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         
                         // Connection Status
@@ -264,19 +275,18 @@ fun HostScreen(
                             
                             val recommendation = when (uiState.selectedConnectionType) {
                                 ConnectionType.LocalHotspot -> {
-                                    if (deviceStatus.connectedToWiFi) {
-                                        "For better hotspot performance, disconnect from WiFi networks"
-                                    } else {
-                                        "Device is ready for Local Hotspot"
+                                    when {
+                                        !deviceStatus.hotspotSupported -> "Local Hotspot is not supported on this device"
+                                        deviceStatus.connectedToWiFi -> "For hotspot mode, disconnect from WiFi networks"
+                                        else -> "Device is ready for Local Hotspot"
                                     }
                                 }
                                 ConnectionType.WiFiDirect -> {
-                                    if (!deviceStatus.wifiDirectSupported) {
-                                        "WiFi Direct is not supported on this device"
-                                    } else if (deviceStatus.connectedToWiFi) {
-                                        "For better WiFi Direct performance, disconnect from WiFi networks"
-                                    } else {
-                                        "Device is ready for WiFi Direct"
+                                    when {
+                                        !deviceStatus.wifiDirectSupported -> "WiFi Direct is not supported on this device"
+                                        !deviceStatus.wifiEnabled -> "WiFi Direct requires WiFi to be enabled"
+                                        deviceStatus.connectedToWiFi -> "For better WiFi Direct performance, disconnect from WiFi networks"
+                                        else -> "Device is ready for WiFi Direct"
                                     }
                                 }
                             }
@@ -298,7 +308,9 @@ fun HostScreen(
                                 )
                             }
                             
-                            if (deviceStatus.connectedToWiFi) {
+                            // Only show optimize button if there's something we can fix
+                            if (deviceStatus.connectedToWiFi || 
+                                (uiState.selectedConnectionType == ConnectionType.WiFiDirect && !deviceStatus.wifiEnabled)) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 OutlinedButton(
                                     onClick = { viewModel.prepareDevice() },
@@ -838,14 +850,17 @@ fun HostScreen(
     }
 }
 
-// Add extension function for DeviceStatus
+// Update the extension function for optimal device state
 @Composable
 private fun DeviceStatus.isOptimal(connectionType: ConnectionType): Boolean {
     return when (connectionType) {
         ConnectionType.LocalHotspot -> {
-            wifiEnabled && !connectedToWiFi && hotspotSupported
+            // For hotspot: only need to not be connected to WiFi network and hotspot support
+            // WiFi can be on or off - doesn't matter
+            !connectedToWiFi && hotspotSupported
         }
         ConnectionType.WiFiDirect -> {
+            // For WiFi Direct: need WiFi enabled and support
             wifiEnabled && wifiDirectSupported
         }
     }

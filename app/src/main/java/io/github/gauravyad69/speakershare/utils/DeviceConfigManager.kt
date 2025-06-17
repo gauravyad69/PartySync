@@ -41,21 +41,12 @@ class DeviceConfigManager(private val context: Context) {
                 delay(2000)
             }
             
-            // Step 2: Ensure WiFi is enabled (needed for hotspot)
-            if (!wifiManager.isWifiEnabled) {
-                Log.d(TAG, "WiFi is disabled, enabling...")
-                @Suppress("DEPRECATION")
-                val enabled = wifiManager.setWifiEnabled(true)
-                if (!enabled) {
-                    return Result.failure(Exception("Failed to enable WiFi. Please enable WiFi manually in Settings."))
-                }
-                
-                // Wait for WiFi to be enabled
-                delay(3000)
-            }
+            // Step 2: For hotspot, we DON'T need WiFi to be enabled
+            // The hotspot creates its own access point independently
+            Log.d(TAG, "WiFi state for hotspot - WiFi enabled: ${wifiManager.isWifiEnabled}")
             
-            // Step 3: Verify final state
-            val isReady = !isConnectedToWiFiNetwork() && wifiManager.isWifiEnabled
+            // Step 3: Verify final state - just ensure we're not connected to any network
+            val isReady = !isConnectedToWiFiNetwork()
             Log.d(TAG, "Device preparation complete. Ready: $isReady")
             
             Result.success(isReady)

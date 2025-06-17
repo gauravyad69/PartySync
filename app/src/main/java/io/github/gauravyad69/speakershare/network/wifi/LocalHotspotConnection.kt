@@ -50,14 +50,14 @@ class LocalHotspotConnection(
     
     private fun isWiFiInCompatibleState(): Boolean {
         return try {
-            // Check if WiFi is enabled and not connected to a network
-            val isEnabled = wifiManager.isWifiEnabled
+            // For hotspot, we only care that WiFi is not connected to another network
+            // WiFi can be enabled or disabled - hotspot works independently
             val connectionInfo = wifiManager.connectionInfo
             val isConnected = connectionInfo != null && connectionInfo.networkId != -1
             
-            Log.d(TAG, "WiFi enabled: $isEnabled, connected: $isConnected")
+            Log.d(TAG, "WiFi connected to network: $isConnected")
             
-            // For hotspot to work, WiFi should typically be off or not connected
+            // For hotspot to work, we just need to not be connected to another network
             !isConnected
         } catch (e: Exception) {
             Log.e(TAG, "Error checking WiFi state", e)
@@ -70,7 +70,7 @@ class LocalHotspotConnection(
             _connectionState.value = ConnectionState.Connecting
             isHost = true
             
-            // Check WiFi state first
+            // Check WiFi state first - only ensure we're not connected to another network
             if (!isWiFiInCompatibleState()) {
                 val errorMsg = "WiFi is connected to a network. Please disconnect from WiFi to create a hotspot."
                 Log.w(TAG, errorMsg)
@@ -79,9 +79,8 @@ class LocalHotspotConnection(
             }
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // Use WifiManager.LocalOnlyHotspotReservation for newer Android versions
+                // LocalOnlyHotspot works regardless of WiFi state
                 startLocalOnlyHotspot(roomName)
-                // Don't immediately return success - wait for the callback
             } else {
                 // For older versions, we'll simulate hotspot creation
                 Log.w(TAG, "Android version too old for Local Hotspot, using fallback")
@@ -89,7 +88,6 @@ class LocalHotspotConnection(
                 startServer()
             }
             
-            // Return success for now, but the actual result will be reported via connectionState
             Result.success("$HOTSPOT_SSID$roomName")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting hotspot", e)
