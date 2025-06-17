@@ -86,21 +86,34 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun startHosting() {
+        Log.d("HostViewModel", "startHosting called - hasPermissions: ${_uiState.value.hasPermissions}")
+        
         if (!permissionHandler.hasAllPermissions()) {
+            Log.w("HostViewModel", "Cannot start hosting - missing permissions")
+            checkPermissions() // Force recheck
             return
         }
         
         viewModelScope.launch {
             try {
+                // Remove this line - _connectionState doesn't exist in ViewModel
+                // _connectionState.value = ConnectionState.Connecting
+                
+                // Instead, update the UI state directly
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                
                 val connection = networkManager.createConnection(_uiState.value.selectedConnectionType)
                 currentConnection = connection
                 
                 observeConnectionState(connection)
                 
                 val roomName = _uiState.value.roomName.ifEmpty { "Room_${System.currentTimeMillis()}" }
+                Log.d("HostViewModel", "Attempting to start host with connection type: ${_uiState.value.selectedConnectionType}")
+                
                 val result = connection.startHost(roomName)
                 
                 if (result.isSuccess) {
+                    Log.d("HostViewModel", "Host started successfully")
                     _uiState.value = _uiState.value.copy(isHosting = true)
                     
                     syncManager = SyncManager(
@@ -109,8 +122,15 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                         isHost = true,
                         scope = viewModelScope
                     )
+                } else {
+                    val error = result.exceptionOrNull()
+                    Log.e("HostViewModel", "Failed to start host", error)
+                    _uiState.value = _uiState.value.copy(
+                        connectionState = ConnectionState.Error(error?.message ?: "Failed to start hosting")
+                    )
                 }
             } catch (e: Exception) {
+                Log.e("HostViewModel", "Error starting host", e)
                 _uiState.value = _uiState.value.copy(
                     connectionState = ConnectionState.Error(e.message ?: "Unknown error")
                 )
@@ -118,6 +138,21 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
+    // Add a function to reset connection state
+fun resetConnectionState() {
+    _uiState.value = _uiState.value.copy(
+        connectionState = ConnectionState.Disconnected,
+        isHosting = false
+    )
+}
+
+// Update switchToLocalHotspot to also reset state
+fun switchToLocalHotspot() {
+    Log.d("HostViewModel", "Switching to Local Hotspot due to WiFi Direct failure")
+    resetConnectionState()
+    updateConnectionType(ConnectionType.LocalHotspot)
+}
+
     fun stopHosting() {
         viewModelScope.launch {
             networkManager.disconnect()

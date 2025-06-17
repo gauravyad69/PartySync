@@ -1,5 +1,6 @@
 package io.github.gauravyad69.speakershare.ui.screens
 
+import android.content.pm.PackageManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -110,6 +111,13 @@ fun HostScreen(
                         Text("Connection state: ${uiState.connectionState}")
                         Text("Room name: '${uiState.roomName}'")
                         
+                        // Add WiFi Direct support check
+                        val hasWiFiDirect = context.packageManager.hasSystemFeature(PackageManager.FEATURE_WIFI_DIRECT)
+                        Text("WiFi Direct supported: $hasWiFiDirect")
+                        
+                        // Show current connection type
+                        Text("Connection type: ${uiState.selectedConnectionType.displayName}")
+                        
                         Spacer(modifier = Modifier.height(8.dp))
                         
                         Row(
@@ -191,24 +199,124 @@ fun HostScreen(
                         }
                     }
                     
-                    // Debug text for button state
-                    Text(
-                        text = "Button enabled: $buttonEnabled (permissions: ${uiState.hasPermissions}, state: ${uiState.connectionState})",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    
-                    // Show what's preventing the button from being enabled
-                    if (!buttonEnabled) {
-                        Text(
-                            text = when {
-                                !uiState.hasPermissions -> "❌ Missing permissions"
-                                uiState.connectionState == ConnectionState.Connecting -> "⏳ Currently connecting"
-                                else -> "❓ Unknown reason"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
+                    // Show connection error and suggest fallback
+                    when (val state = uiState.connectionState) {
+                        is ConnectionState.Error -> {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Text(
+                                        "Connection Error",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    Text(
+                                        state.message,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
+                                    // Show specific guidance based on error type
+                                    when {
+                                        state.message.contains("incompatible mode", ignoreCase = true) -> {
+                                            Text(
+                                                "💡 Solution:",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            Text(
+                                                "1. Disconnect from WiFi networks\n2. Turn WiFi off and on\n3. Try again",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            
+                                            OutlinedButton(
+                                                onClick = { 
+                                                    // Try again after user fixes WiFi
+                                                    viewModel.startHosting()
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Try Again")
+                                            }
+                                        }
+                                        
+                                        state.message.contains("WiFi Direct", ignoreCase = true) && 
+                                        uiState.selectedConnectionType == ConnectionType.WiFiDirect -> {
+                                            
+                                            Text(
+                                                "💡 Alternative:",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            Text(
+                                                "Try using Local Hotspot instead:",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            
+                                            OutlinedButton(
+                                                onClick = { 
+                                                    viewModel.switchToLocalHotspot()
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Switch to Local Hotspot")
+                                            }
+                                        }
+                                        
+                                        state.message.contains("not supported", ignoreCase = true) -> {
+                                            Text(
+                                                "⚠️ This feature is not supported on your device.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                        }
+                                        
+                                        else -> {
+                                            OutlinedButton(
+                                                onClick = { 
+                                                    viewModel.startHosting()
+                                                },
+                                                modifier = Modifier.fillMaxWidth()
+                                            ) {
+                                                Text("Retry")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else -> {
+                            // Debug text for button state
+                            Text(
+                                text = "Button enabled: $buttonEnabled (permissions: ${uiState.hasPermissions}, state: ${uiState.connectionState})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            
+                            // Show what's preventing the button from being enabled
+                            if (!buttonEnabled) {
+                                Text(
+                                    text = when {
+                                        !uiState.hasPermissions -> "❌ Missing permissions"
+                                        uiState.connectionState == ConnectionState.Connecting -> "⏳ Currently connecting"
+                                        else -> "❓ Unknown reason"
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
                     }
                 }
             } else {

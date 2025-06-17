@@ -3,6 +3,7 @@ package io.github.gauravyad69.speakershare.network.wifi
 import android.Manifest
 import android.content.Context
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.net.wifi.p2p.WifiP2pConfig
 import android.net.wifi.p2p.WifiP2pDevice
 import android.net.wifi.p2p.WifiP2pInfo
@@ -64,6 +65,14 @@ class WiFiDirectConnection(
         return try {
             _connectionState.value = ConnectionState.Connecting
             
+            // Check if WiFi P2P is supported
+            if (!isWiFiP2pSupported()) {
+                val errorMsg = "WiFi Direct is not supported on this device"
+                Log.e(TAG, errorMsg)
+                _connectionState.value = ConnectionState.Error(errorMsg)
+                return Result.failure(Exception(errorMsg))
+            }
+            
             registerBroadcastReceiver()
             
             manager.createGroup(channel, object : WifiP2pManager.ActionListener {
@@ -75,8 +84,9 @@ class WiFiDirectConnection(
                 }
                 
                 override fun onFailure(reason: Int) {
-                    Log.e(TAG, "Failed to create group: $reason")
-                    _connectionState.value = ConnectionState.Error("Failed to create group: $reason")
+                    val errorMsg = getP2pErrorMessage(reason)
+                    Log.e(TAG, "Failed to create group: $reason - $errorMsg")
+                    _connectionState.value = ConnectionState.Error(errorMsg)
                 }
             })
             
@@ -264,6 +274,26 @@ class WiFiDirectConnection(
                     _connectionState.value = ConnectionState.Error("Failed to connect to server")
                 }
             }.start()
+        }
+    }
+    
+    private fun isWiFiP2pSupported(): Boolean {
+        return try {
+            val pm = context.packageManager
+            pm.hasSystemFeature(PackageManager.FEATURE_WIFI_DIRECT)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking WiFi P2P support", e)
+            false
+        }
+    }
+    
+    private fun getP2pErrorMessage(reason: Int): String {
+        return when (reason) {
+            WifiP2pManager.ERROR -> "Internal error"
+            WifiP2pManager.P2P_UNSUPPORTED -> "WiFi Direct is not supported on this device"
+            WifiP2pManager.BUSY -> "WiFi Direct is busy, try again later"
+            WifiP2pManager.NO_SERVICE_REQUESTS -> "No service requests"
+            else -> "Unknown error (code: $reason)"
         }
     }
 }

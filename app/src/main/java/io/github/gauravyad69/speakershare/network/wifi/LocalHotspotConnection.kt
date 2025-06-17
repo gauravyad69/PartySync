@@ -48,20 +48,48 @@ class LocalHotspotConnection(
     private var serverSocket: ServerSocket? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     
+    private fun isWiFiInCompatibleState(): Boolean {
+        return try {
+            // Check if WiFi is enabled and not connected to a network
+            val isEnabled = wifiManager.isWifiEnabled
+            val connectionInfo = wifiManager.connectionInfo
+            val isConnected = connectionInfo != null && connectionInfo.networkId != -1
+            
+            Log.d(TAG, "WiFi enabled: $isEnabled, connected: $isConnected")
+            
+            // For hotspot to work, WiFi should typically be off or not connected
+            !isConnected
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking WiFi state", e)
+            false
+        }
+    }
+    
     override suspend fun startHost(roomName: String): Result<String> {
         return try {
             _connectionState.value = ConnectionState.Connecting
             isHost = true
             
+            // Check WiFi state first
+            if (!isWiFiInCompatibleState()) {
+                val errorMsg = "WiFi is connected to a network. Please disconnect from WiFi to create a hotspot."
+                Log.w(TAG, errorMsg)
+                _connectionState.value = ConnectionState.Error(errorMsg)
+                return Result.failure(Exception(errorMsg))
+            }
+            
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 // Use WifiManager.LocalOnlyHotspotReservation for newer Android versions
                 startLocalOnlyHotspot(roomName)
+                // Don't immediately return success - wait for the callback
             } else {
                 // For older versions, we'll simulate hotspot creation
+                Log.w(TAG, "Android version too old for Local Hotspot, using fallback")
                 _connectionState.value = ConnectionState.Connected
                 startServer()
             }
             
+            // Return success for now, but the actual result will be reported via connectionState
             Result.success("$HOTSPOT_SSID$roomName")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting hotspot", e)
@@ -86,10 +114,21 @@ class LocalHotspotConnection(
                 }
                 
                 override fun onFailed(reason: Int) {
-                    Log.e(TAG, "Failed to start local hotspot: $reason")
-                    _connectionState.value = ConnectionState.Error("Failed to start hotspot: $reason")
+                    val errorMsg = getHotspotErrorMessage(reason)
+                    Log.e(TAG, "Failed to start local hotspot: $reason - $errorMsg")
+                    _connectionState.value = ConnectionState.Error(errorMsg)
                 }
             }, null)
+        }
+    }
+    
+    private fun getHotspotErrorMessage(reason: Int): String {
+        return when (reason) {
+            1 -> "No channel available for hotspot" // ERROR_NO_CHANNEL
+            2 -> "Generic hotspot error" // ERROR_GENERIC  
+            3 -> "WiFi is in incompatible mode. Please disconnect from WiFi networks and try again." // ERROR_INCOMPATIBLE_MODE
+            4 -> "Tethering is not allowed on this device" // ERROR_TETHERING_DISALLOWED
+            else -> "Unknown hotspot error (code: $reason)"
         }
     }
     
