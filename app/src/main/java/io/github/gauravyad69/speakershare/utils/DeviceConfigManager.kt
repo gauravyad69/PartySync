@@ -57,26 +57,32 @@ class DeviceConfigManager(private val context: Context) {
     }
     
     /**
-     * Prepares the device for WiFi Direct
+     * Prepares the device for WiFi Direct with better state management
      */
     suspend fun prepareForWiFiDirect(): Result<Boolean> {
         return try {
             Log.d(TAG, "Preparing device for WiFi Direct...")
             
-            // WiFi Direct works better when not connected to other networks
+            // Step 1: Reset WiFi Direct state to clear any busy conditions
+            resetWiFiDirectState()
+            
+            // Step 2: WiFi Direct works better when not connected to other networks
             if (isConnectedToWiFiNetwork()) {
                 Log.d(TAG, "Disconnecting from WiFi for better WiFi Direct performance...")
                 disconnectFromWiFi()
                 delay(2000)
             }
             
-            // Ensure WiFi is enabled
+            // Step 3: Ensure WiFi is enabled
             if (!wifiManager.isWifiEnabled) {
                 Log.d(TAG, "Enabling WiFi for WiFi Direct...")
                 @Suppress("DEPRECATION")
                 wifiManager.setWifiEnabled(true)
                 delay(3000)
             }
+            
+            // Step 4: Additional delay to ensure WiFi Direct is ready
+            delay(1000)
             
             Result.success(true)
         } catch (e: Exception) {
@@ -162,6 +168,28 @@ class DeviceConfigManager(private val context: Context) {
     
     private fun isWiFiDirectSupported(): Boolean {
         return context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_WIFI_DIRECT)
+    }
+    
+    /**
+     * Reset WiFi Direct state to clear busy conditions
+     */
+    private suspend fun resetWiFiDirectState() {
+        try {
+            Log.d(TAG, "Resetting WiFi Direct state...")
+            
+            // Turn WiFi off and on to reset WiFi Direct state
+            if (wifiManager.isWifiEnabled) {
+                @Suppress("DEPRECATION")
+                wifiManager.setWifiEnabled(false)
+                delay(2000)
+                
+                @Suppress("DEPRECATION")
+                wifiManager.setWifiEnabled(true)
+                delay(3000)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error resetting WiFi Direct state", e)
+        }
     }
 }
 

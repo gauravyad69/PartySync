@@ -486,6 +486,67 @@ fun HostScreen(
                                     
                                     // Show specific guidance based on error type
                                     when {
+                                        state.message.contains("busy", ignoreCase = true) -> {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Octicons.Clock24,
+                                                    contentDescription = "Busy",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    "WiFi Direct Busy:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
+                                            Text(
+                                                "WiFi Direct is being used by another app or process.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        viewModel.resetWiFiDirectState()
+                                                    },
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Icon(
+                                                        Octicons.Sync24,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Reset WiFi")
+                                                }
+                                                
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        viewModel.switchToLocalHotspot()
+                                                    },
+                                                    modifier = Modifier.weight(1f)
+                                                ) {
+                                                    Icon(
+                                                        Octicons.Server24,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(4.dp))
+                                                    Text("Use Hotspot")
+                                                }
+                                            }
+                                        }
+                                        
                                         state.message.contains("incompatible mode", ignoreCase = true) -> {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically
@@ -554,7 +615,7 @@ fun HostScreen(
                                             Spacer(modifier = Modifier.height(8.dp))
                                             OutlinedButton(
                                                 onClick = { 
-//                                                    viewModel.switchToLocalHotspot()
+                                                    viewModel.switchToLocalHotspot()
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {

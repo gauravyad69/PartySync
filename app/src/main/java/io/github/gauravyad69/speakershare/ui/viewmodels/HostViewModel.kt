@@ -248,6 +248,37 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    fun switchToLocalHotspot() {
+    Log.d("HostViewModel", "Switching to Local Hotspot due to WiFi Direct issues")
+    _uiState.value = _uiState.value.copy(
+        selectedConnectionType = ConnectionType.LocalHotspot,
+        connectionState = ConnectionState.Disconnected
+    )
+}
+    // Add function to reset WiFi Direct state
+    fun resetWiFiDirectState() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                
+                Log.d("HostViewModel", "Resetting WiFi Direct state...")
+                val result = deviceConfigManager.prepareForWiFiDirect()
+                
+                if (result.isSuccess) {
+                    _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Disconnected)
+                } else {
+                    val error = result.exceptionOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        connectionState = ConnectionState.Error(error?.message ?: "Failed to reset WiFi Direct")
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    connectionState = ConnectionState.Error(e.message ?: "Unknown error")
+                )
+            }
+        }
+    }
     
     override fun onCleared() {
         super.onCleared()

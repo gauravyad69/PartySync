@@ -16,14 +16,17 @@ import io.github.gauravyad69.speakershare.network.ConnectionType
 import io.github.gauravyad69.speakershare.network.NetworkConnection
 import io.github.gauravyad69.speakershare.network.NetworkDevice
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
+import kotlin.coroutines.resume
 
 class WiFiDirectConnection(
     private val context: Context
@@ -73,28 +76,97 @@ class WiFiDirectConnection(
                 return Result.failure(Exception(errorMsg))
             }
             
+            // Clean up any existing state first
+            cleanupExistingConnections()
+            
             registerBroadcastReceiver()
             
-            manager.createGroup(channel, object : WifiP2pManager.ActionListener {
-                override fun onSuccess() {
-                    Log.d(TAG, "Group created successfully")
-                    isHost = true
-                    _connectionState.value = ConnectionState.Connected
-                    startServer()
-                }
-                
-                override fun onFailure(reason: Int) {
-                    val errorMsg = getP2pErrorMessage(reason)
-                    Log.e(TAG, "Failed to create group: $reason - $errorMsg")
-                    _connectionState.value = ConnectionState.Error(errorMsg)
-                }
-            })
+            // Attempt to create group with retry logic for BUSY state
+            createGroupWithRetry(roomName)
             
+            // Don't return success immediately - wait for callback
             Result.success("WiFi_Direct_$roomName")
         } catch (e: Exception) {
             Log.e(TAG, "Error starting host", e)
             _connectionState.value = ConnectionState.Error(e.message ?: "Unknown error")
             Result.failure(e)
+        }
+    }
+    
+    private suspend fun createGroupWithRetry(roomName: String, maxRetries: Int = 3) {
+        var retryCount = 0
+        
+        while (retryCount < maxRetries) {
+            Log.d(TAG, "Attempting to create group (attempt ${retryCount + 1}/$maxRetries)")
+            
+            val success = suspendCancellableCoroutine<Boolean> { continuation ->
+                manager.createGroup(channel, object : WifiP2pManager.ActionListener {
+                    override fun onSuccess() {
+                        Log.d(TAG, "Group created successfully")
+                        isHost = true
+                        _connectionState.value = ConnectionState.Connected
+                        startServer()
+                        continuation.resume(true)
+                    }
+                    
+                    override fun onFailure(reason: Int) {
+                        val errorMsg = getP2pErrorMessage(reason)
+                        Log.e(TAG, "Failed to create group: $reason - $errorMsg")
+                        
+                        if (reason == WifiP2pManager.BUSY && retryCount < maxRetries - 1) {
+                            Log.w(TAG, "WiFi Direct is busy, will retry after cleanup...")
+                            continuation.resume(false)
+                        } else {
+                            _connectionState.value = ConnectionState.Error(errorMsg)
+                            continuation.resume(true) // Stop retrying
+                        }
+                    }
+                })
+            }
+            
+            if (success) {
+                break
+            }
+            
+            retryCount++
+            
+            if (retryCount < maxRetries) {
+                Log.d(TAG, "Cleaning up before retry...")
+                cleanupExistingConnections()
+                delay(2000) // Wait 2 seconds before retry
+            }
+        }
+    }
+    
+    private suspend fun cleanupExistingConnections() {
+        Log.d(TAG, "Cleaning up existing WiFi Direct connections...")
+        
+        try {
+            // Cancel any pending connections
+            manager.cancelConnect(channel, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    Log.d(TAG, "Cancelled pending connections")
+                }
+                override fun onFailure(reason: Int) {
+                    Log.d(TAG, "No pending connections to cancel")
+                }
+            })
+            
+            // Remove any existing groups
+            manager.removeGroup(channel, object : WifiP2pManager.ActionListener {
+                override fun onSuccess() {
+                    Log.d(TAG, "Removed existing group")
+                }
+                override fun onFailure(reason: Int) {
+                    Log.d(TAG, "No existing group to remove")
+                }
+            })
+            
+            // Wait for cleanup to complete
+            delay(1000)
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error during cleanup", e)
         }
     }
     
@@ -291,7 +363,7 @@ class WiFiDirectConnection(
         return when (reason) {
             WifiP2pManager.ERROR -> "Internal error"
             WifiP2pManager.P2P_UNSUPPORTED -> "WiFi Direct is not supported on this device"
-            WifiP2pManager.BUSY -> "WiFi Direct is busy, try again later"
+            WifiP2pManager.BUSY -> "WiFi Direct is busy. Please wait and try again."
             WifiP2pManager.NO_SERVICE_REQUESTS -> "No service requests"
             else -> "Unknown error (code: $reason)"
         }
