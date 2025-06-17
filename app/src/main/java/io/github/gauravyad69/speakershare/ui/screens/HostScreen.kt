@@ -1,7 +1,5 @@
 package io.github.gauravyad69.speakershare.ui.screens
 
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,7 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -89,12 +87,64 @@ fun HostScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Debug info card
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (uiState.hasPermissions) 
+                            MaterialTheme.colorScheme.primaryContainer 
+                        else 
+                            MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "Debug Info",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        Text("Android: ${android.os.Build.VERSION.SDK_INT}")
+                        Text("Has permissions: ${uiState.hasPermissions}")
+                        Text("Connection state: ${uiState.connectionState}")
+                        Text("Room name: '${uiState.roomName}'")
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = { 
+                                    showPermissionDialog = true 
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Request Permissions")
+                            }
+                            
+                            OutlinedButton(
+                                onClick = { 
+                                    viewModel.refreshPermissions() 
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text("Refresh")
+                            }
+                        }
+                    }
+                }
+            }
+            
             if (!uiState.isHosting) {
                 item {
                     OutlinedTextField(
                         value = uiState.roomName,
                         onValueChange = viewModel::updateRoomName,
                         label = { Text("Room Name") },
+                        placeholder = { Text("Enter party name...") },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -121,10 +171,12 @@ fun HostScreen(
                 }
                 
                 item {
+                    val buttonEnabled = uiState.hasPermissions && uiState.connectionState != ConnectionState.Connecting
+                    
                     Button(
                         onClick = { viewModel.startHosting() },
                         modifier = Modifier.fillMaxWidth(),
-                        enabled = uiState.hasPermissions && uiState.connectionState != ConnectionState.Connecting
+                        enabled = buttonEnabled
                     ) {
                         when (uiState.connectionState) {
                             ConnectionState.Connecting -> {
@@ -138,8 +190,29 @@ fun HostScreen(
                             else -> Text("Start Party")
                         }
                     }
+                    
+                    // Debug text for button state
+                    Text(
+                        text = "Button enabled: $buttonEnabled (permissions: ${uiState.hasPermissions}, state: ${uiState.connectionState})",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    
+                    // Show what's preventing the button from being enabled
+                    if (!buttonEnabled) {
+                        Text(
+                            text = when {
+                                !uiState.hasPermissions -> "❌ Missing permissions"
+                                uiState.connectionState == ConnectionState.Connecting -> "⏳ Currently connecting"
+                                else -> "❓ Unknown reason"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             } else {
+                // Party is active - show hosting status
                 item {
                     Card(
                         modifier = Modifier.fillMaxWidth()
@@ -173,10 +246,14 @@ fun HostScreen(
                                         ConnectionState.Connected -> "Connected"
                                         ConnectionState.Connecting -> "Connecting..."
                                         ConnectionState.Disconnected -> "Disconnected"
-                                        is ConnectionState.Error -> "Error: ${uiState.connectionState.message}"
+                                        is ConnectionState.Error -> "Error: ${(uiState.connectionState as ConnectionState.Error).message}"
                                     }
                                 )
                             }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Room: ${uiState.roomName.ifEmpty { "Default Room" }}")
+                            Text("Connection: ${uiState.selectedConnectionType.displayName}")
                             
                             if (uiState.connectedDevices.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -202,6 +279,11 @@ fun HostScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(track.title, style = MaterialTheme.typography.titleSmall)
                                 Text(track.artist, style = MaterialTheme.typography.bodySmall)
+                                Text(
+                                    "Duration: ${track.duration / 1000}s",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                             
                             if (uiState.currentTrack?.id == track.id) {
@@ -250,7 +332,7 @@ fun HostScreen(
                                         }
                                     ) {
                                         Icon(
-                                            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                            if (isPlaying) Icons.Default.Menu else Icons.Default.PlayArrow,
                                             contentDescription = if (isPlaying) "Pause" else "Play"
                                         )
                                     }
@@ -260,6 +342,14 @@ fun HostScreen(
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                         "Position: ${playback.position / 1000}s",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Text(
+                                        "Playing: ${playback.isPlaying}",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Text(
+                                        "Track ID: ${playback.trackId}",
                                         style = MaterialTheme.typography.bodySmall
                                     )
                                 }

@@ -213,7 +213,7 @@ fun JoinScreen(
                                         ConnectionState.Connected -> "Connected"
                                         ConnectionState.Connecting -> "Connecting..."
                                         ConnectionState.Disconnected -> "Disconnected"
-                                        is ConnectionState.Error -> "Error: ${uiState.connectionState.message}"
+                                        is ConnectionState.Error -> "Error: ${(uiState.connectionState as ConnectionState.Error).message}"
                                     }
                                 )
                             }

@@ -1,6 +1,7 @@
 package io.github.gauravyad69.speakershare.ui.viewmodels
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gauravyad69.speakershare.audio.AudioTrack
@@ -46,14 +47,34 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         observePlaybackState()
     }
     
-    private fun checkPermissions() {
+     private fun checkPermissions() {
+        val hasPermissions = permissionHandler.hasAllPermissions()
+        val missingPermissions = permissionHandler.getMissingPermissions()
+        
+        Log.d("HostViewModel", "Android SDK: ${android.os.Build.VERSION.SDK_INT}")
+        Log.d("HostViewModel", "Checking permissions: $hasPermissions")
+        Log.d("HostViewModel", "Missing permissions: $missingPermissions")
+        
         _uiState.value = _uiState.value.copy(
-            hasPermissions = permissionHandler.hasAllPermissions()
+            hasPermissions = hasPermissions
         )
     }
     
-    fun onPermissionsResult(granted: Boolean) {
+      fun onPermissionsResult(granted: Boolean) {
+        Log.d("HostViewModel", "Permission result received: $granted")
+        
+        // Always recheck permissions after the dialog
+        checkPermissions()
+        
+        // Also update the state with the result
         _uiState.value = _uiState.value.copy(hasPermissions = granted)
+        
+        Log.d("HostViewModel", "UI State updated - hasPermissions: ${_uiState.value.hasPermissions}")
+    }
+      // Add a manual refresh function for debugging
+    fun refreshPermissions() {
+        Log.d("HostViewModel", "Manual permission refresh requested")
+        checkPermissions()
     }
     
     fun updateRoomName(name: String) {
