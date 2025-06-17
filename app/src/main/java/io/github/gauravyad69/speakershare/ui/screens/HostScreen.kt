@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import compose.icons.Octicons
+import compose.icons.octicons.*
 import io.github.gauravyad69.speakershare.audio.AudioTrack
 import io.github.gauravyad69.speakershare.network.ConnectionState
 import io.github.gauravyad69.speakershare.network.ConnectionType
@@ -74,7 +76,7 @@ fun HostScreen(
             actions = {
                 if (uiState.isHosting) {
                     IconButton(onClick = { viewModel.stopHosting() }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Stop Hosting")
+                        Icon(Octicons.X24, contentDescription = "Stop Hosting")
                     }
                 }
             }
@@ -100,10 +102,24 @@ fun HostScreen(
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
-                        Text(
-                            "Debug Info",
-                            style = MaterialTheme.typography.titleSmall
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Octicons.Bug24,
+                                contentDescription = "Debug",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Debug Info",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
                         Text("Android: ${android.os.Build.VERSION.SDK_INT}")
                         Text("Has permissions: ${uiState.hasPermissions}")
                         Text("Connection state: ${uiState.connectionState}")
@@ -128,7 +144,13 @@ fun HostScreen(
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
-                                Text("Request Permissions")
+                                Icon(
+                                    Octicons.Shield24,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Permissions")
                             }
                             
                             OutlinedButton(
@@ -137,6 +159,12 @@ fun HostScreen(
                                 },
                                 modifier = Modifier.weight(1f)
                             ) {
+                                Icon(
+                                    Octicons.Sync24,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
                                 Text("Refresh")
                             }
                         }
@@ -160,19 +188,30 @@ fun HostScreen(
                     Column(
                         modifier = Modifier.padding(16.dp)
                     ) {
-                        Text(
-                            "Device Status",
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        
-                        // WiFi Status - Using Signal Wifi icons instead
                         Row(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                if (deviceStatus.wifiEnabled) Icons.Default.Wifi else Icons.Default.WifiOff,
+                                Octicons.DeviceMobile24,
+                                contentDescription = "Device",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Device Status",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        // WiFi Status
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                if (deviceStatus.wifiEnabled) Octicons.Broadcast24 else Octicons.Stop24,
                                 contentDescription = "WiFi",
                                 tint = if (deviceStatus.wifiEnabled) 
                                     MaterialTheme.colorScheme.primary 
@@ -184,13 +223,13 @@ fun HostScreen(
                             Text("WiFi: ${if (deviceStatus.wifiEnabled) "Enabled" else "Disabled"}")
                         }
                         
-                        // Connection Status - Using Signal Wifi icons
+                        // Connection Status
                         if (deviceStatus.connectedToWiFi) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    Icons.Default.Wifi,
+                                    Octicons.Link24,
                                     contentDescription = "Connected",
                                     tint = MaterialTheme.colorScheme.secondary,
                                     modifier = Modifier.size(16.dp)
@@ -201,11 +240,22 @@ fun HostScreen(
                         }
                         
                         // Feature Support
-                        Text(
-                            "Features: ${if (deviceStatus.wifiDirectSupported) "WiFi Direct ✓" else "WiFi Direct ✗"} | ${if (deviceStatus.hotspotSupported) "Hotspot ✓" else "Hotspot ✗"}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Octicons.Checklist24,
+                                contentDescription = "Features",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "WiFi Direct: ${if (deviceStatus.wifiDirectSupported) "✓" else "✗"} | Hotspot: ${if (deviceStatus.hotspotSupported) "✓" else "✗"}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                         
                         // Show optimization status
                         val isOptimal = deviceStatus.isOptimal(uiState.selectedConnectionType)
@@ -231,11 +281,22 @@ fun HostScreen(
                                 }
                             }
                             
-                            Text(
-                                "💡 $recommendation",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Octicons.LightBulb24,
+                                    contentDescription = "Tip",
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    recommendation,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                             
                             if (deviceStatus.connectedToWiFi) {
                                 Spacer(modifier = Modifier.height(8.dp))
@@ -252,17 +313,34 @@ fun HostScreen(
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Text("Preparing...")
                                     } else {
+                                        Icon(
+                                            Octicons.Tools24,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text("Optimize Device Settings")
                                     }
                                 }
                             }
                         } else {
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "✅ Device is optimally configured for ${uiState.selectedConnectionType.displayName}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Octicons.CheckCircle24,
+                                    contentDescription = "Ready",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Device is optimally configured for ${uiState.selectedConnectionType.displayName}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                     }
                 }
@@ -275,6 +353,13 @@ fun HostScreen(
                         onValueChange = viewModel::updateRoomName,
                         label = { Text("Room Name") },
                         placeholder = { Text("Enter party name...") },
+                        leadingIcon = {
+                            Icon(
+                                Octicons.Home24,
+                                contentDescription = "Room",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -289,13 +374,31 @@ fun HostScreen(
                         FilterChip(
                             onClick = { viewModel.updateConnectionType(ConnectionType.WiFiDirect) },
                             label = { Text("WiFi Direct") },
-                            selected = uiState.selectedConnectionType == ConnectionType.WiFiDirect
+                            selected = uiState.selectedConnectionType == ConnectionType.WiFiDirect,
+                            leadingIcon = if (uiState.selectedConnectionType == ConnectionType.WiFiDirect) {
+                                {
+                                    Icon(
+                                        Octicons.Broadcast24,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null
                         )
                         
                         FilterChip(
                             onClick = { viewModel.updateConnectionType(ConnectionType.LocalHotspot) },
                             label = { Text("Local Hotspot") },
-                            selected = uiState.selectedConnectionType == ConnectionType.LocalHotspot
+                            selected = uiState.selectedConnectionType == ConnectionType.LocalHotspot,
+                            leadingIcon = if (uiState.selectedConnectionType == ConnectionType.LocalHotspot) {
+                                {
+                                    Icon(
+                                        Octicons.Server24,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                            } else null
                         )
                     }
                 }
@@ -317,7 +420,15 @@ fun HostScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Connecting...")
                             }
-                            else -> Text("Start Party")
+                            else -> {
+                                Icon(
+                                    Octicons.Play24,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Start Party")
+                            }
                         }
                     }
                     
@@ -334,11 +445,25 @@ fun HostScreen(
                                 Column(
                                     modifier = Modifier.padding(16.dp)
                                 ) {
-                                    Text(
-                                        "Connection Error",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        color = MaterialTheme.colorScheme.onErrorContainer
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Octicons.Alert24,
+                                            contentDescription = "Error",
+                                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            "Connection Error",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                    
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    
                                     Text(
                                         state.message,
                                         style = MaterialTheme.typography.bodySmall,
@@ -350,24 +475,41 @@ fun HostScreen(
                                     // Show specific guidance based on error type
                                     when {
                                         state.message.contains("incompatible mode", ignoreCase = true) -> {
-                                            Text(
-                                                "💡 Solution:",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Octicons.LightBulb24,
+                                                    contentDescription = "Solution",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    "Solution:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
                                             Text(
                                                 "1. Disconnect from WiFi networks\n2. Turn WiFi off and on\n3. Try again",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onErrorContainer
                                             )
                                             
+                                            Spacer(modifier = Modifier.height(8.dp))
                                             OutlinedButton(
                                                 onClick = { 
-                                                    // Try again after user fixes WiFi
                                                     viewModel.startHosting()
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
+                                                Icon(
+                                                    Octicons.Sync24,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
                                                 Text("Try Again")
                                             }
                                         }
@@ -375,33 +517,62 @@ fun HostScreen(
                                         state.message.contains("WiFi Direct", ignoreCase = true) && 
                                         uiState.selectedConnectionType == ConnectionType.WiFiDirect -> {
                                             
-                                            Text(
-                                                "💡 Alternative:",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Octicons.ArrowSwitch24,
+                                                    contentDescription = "Alternative",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    "Alternative:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
                                             Text(
                                                 "Try using Local Hotspot instead:",
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onErrorContainer
                                             )
                                             
+                                            Spacer(modifier = Modifier.height(8.dp))
                                             OutlinedButton(
                                                 onClick = { 
-                                                    viewModel.switchToLocalHotspot()
+//                                                    viewModel.switchToLocalHotspot()
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
+                                                Icon(
+                                                    Octicons.Server24,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
                                                 Text("Switch to Local Hotspot")
                                             }
                                         }
                                         
                                         state.message.contains("not supported", ignoreCase = true) -> {
-                                            Text(
-                                                "⚠️ This feature is not supported on your device.",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onErrorContainer
-                                            )
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Octicons.XCircle24,
+                                                    contentDescription = "Not Supported",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    "This feature is not supported on your device.",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
                                         }
                                         
                                         else -> {
@@ -411,6 +582,12 @@ fun HostScreen(
                                                 },
                                                 modifier = Modifier.fillMaxWidth()
                                             ) {
+                                                Icon(
+                                                    Octicons.Sync24,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
                                                 Text("Retry")
                                             }
                                         }
@@ -428,15 +605,30 @@ fun HostScreen(
                             
                             // Show what's preventing the button from being enabled
                             if (!buttonEnabled) {
-                                Text(
-                                    text = when {
-                                        !uiState.hasPermissions -> "❌ Missing permissions"
-                                        uiState.connectionState == ConnectionState.Connecting -> "⏳ Currently connecting"
-                                        else -> "❓ Unknown reason"
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.error
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        when {
+                                            !uiState.hasPermissions -> Octicons.Shield24
+                                            uiState.connectionState == ConnectionState.Connecting -> Octicons.Clock24
+                                            else -> Octicons.Question24
+                                        },
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = when {
+                                            !uiState.hasPermissions -> "Missing permissions"
+                                            uiState.connectionState == ConnectionState.Connecting -> "Currently connecting"
+                                            else -> "Unknown reason"
+                                        },
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
                             }
                         }
                     }
@@ -450,25 +642,37 @@ fun HostScreen(
                         Column(
                             modifier = Modifier.padding(16.dp)
                         ) {
-                            Text(
-                                "Party Status",
-                                style = MaterialTheme.typography.titleMedium
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    Octicons.People24,
+                                    contentDescription = "Party",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    "Party Status",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                            }
                             Spacer(modifier = Modifier.height(8.dp))
                             
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                val statusColor = when (uiState.connectionState) {
-                                    ConnectionState.Connected -> MaterialTheme.colorScheme.primary
-                                    ConnectionState.Connecting -> MaterialTheme.colorScheme.secondary
-                                    else -> MaterialTheme.colorScheme.error
+                                val (statusIcon, statusColor) = when (uiState.connectionState) {
+                                    ConnectionState.Connected -> Octicons.CheckCircle24 to MaterialTheme.colorScheme.primary
+                                    ConnectionState.Connecting -> Octicons.Clock24 to MaterialTheme.colorScheme.secondary
+                                    else -> Octicons.XCircle24 to MaterialTheme.colorScheme.error
                                 }
                                 
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .background(statusColor, CircleShape)
+                                Icon(
+                                    statusIcon,
+                                    contentDescription = "Status",
+                                    tint = statusColor,
+                                    modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
@@ -487,14 +691,34 @@ fun HostScreen(
                             
                             if (uiState.connectedDevices.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Connected devices: ${uiState.connectedDevices.size}")
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Octicons.DeviceMobile24,
+                                        contentDescription = "Devices",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Connected devices: ${uiState.connectedDevices.size}")
+                                }
                             }
                         }
                     }
                 }
                 
                 item {
-                    Text("Music Library", style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Octicons.Note24,
+                            contentDescription = "Music",
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Music Library", style = MaterialTheme.typography.titleMedium)
+                    }
                 }
                 
                 items(sampleTracks) { track ->
@@ -506,6 +730,14 @@ fun HostScreen(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                Octicons.FileMedia24,
+                                contentDescription = "Track",
+                                modifier = Modifier.size(20.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(track.title, style = MaterialTheme.typography.titleSmall)
                                 Text(track.artist, style = MaterialTheme.typography.bodySmall)
@@ -518,9 +750,10 @@ fun HostScreen(
                             
                             if (uiState.currentTrack?.id == track.id) {
                                 Icon(
-                                    Icons.Default.PlayArrow,
+                                    Octicons.Check24,
                                     contentDescription = "Currently selected",
-                                    tint = MaterialTheme.colorScheme.primary
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }
@@ -535,7 +768,19 @@ fun HostScreen(
                             Column(
                                 modifier = Modifier.padding(16.dp)
                             ) {
-                                Text("Now Playing", style = MaterialTheme.typography.titleMedium)
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        Octicons.Play24,
+                                        contentDescription = "Now Playing",
+                                        modifier = Modifier.size(24.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Now Playing", style = MaterialTheme.typography.titleMedium)
+                                }
+                                
                                 Spacer(modifier = Modifier.height(8.dp))
                                 
                                 Text(uiState.currentTrack!!.title)
@@ -562,8 +807,9 @@ fun HostScreen(
                                         }
                                     ) {
                                         Icon(
-                                            if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                            contentDescription = if (isPlaying) "Pause" else "Play"
+                                            if (isPlaying) Octicons.ThreeBars16 else Octicons.Play24,
+                                            contentDescription = if (isPlaying) "Pause" else "Play",
+                                            modifier = Modifier.size(32.dp)
                                         )
                                     }
                                 }
