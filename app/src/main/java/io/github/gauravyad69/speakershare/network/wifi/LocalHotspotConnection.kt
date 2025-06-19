@@ -48,17 +48,29 @@ class LocalHotspotConnection(
     private var serverSocket: ServerSocket? = null
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     
+    private fun getHotspotErrorMessage(reason: Int): String {
+        return when (reason) {
+            WifiManager.LocalOnlyHotspotCallback.ERROR_NO_CHANNEL -> "No channel available for hotspot"
+            WifiManager.LocalOnlyHotspotCallback.ERROR_GENERIC -> "Generic hotspot error. Try disconnecting from WiFi networks and turning WiFi off/on."
+            WifiManager.LocalOnlyHotspotCallback.ERROR_INCOMPATIBLE_MODE -> "WiFi is in incompatible mode. Please disconnect from WiFi networks and try again."
+            WifiManager.LocalOnlyHotspotCallback.ERROR_TETHERING_DISALLOWED -> "Tethering is not allowed on this device"
+            else -> "Unknown hotspot error (code: $reason)"
+        }
+    }
+    
     private fun isWiFiInCompatibleState(): Boolean {
         return try {
-            // For hotspot, we only care that WiFi is not connected to another network
-            // WiFi can be enabled or disabled - hotspot works independently
+            // More thorough check for WiFi connection state
             val connectionInfo = wifiManager.connectionInfo
-            val isConnected = connectionInfo != null && connectionInfo.networkId != -1
+            val isConnectedToNetwork = connectionInfo?.networkId != -1 && 
+                                      connectionInfo?.ssid != null && 
+                                      connectionInfo.ssid != "<unknown ssid>" &&
+                                      connectionInfo.ssid != "\"<unknown ssid>\""
             
-            Log.d(TAG, "WiFi connected to network: $isConnected")
+            Log.d(TAG, "WiFi compatibility check - Network ID: ${connectionInfo?.networkId}, SSID: ${connectionInfo?.ssid}, Connected: $isConnectedToNetwork")
             
-            // For hotspot to work, we just need to not be connected to another network
-            !isConnected
+            // For hotspot to work, we need to not be connected to another network
+            !isConnectedToNetwork
         } catch (e: Exception) {
             Log.e(TAG, "Error checking WiFi state", e)
             false
@@ -70,7 +82,7 @@ class LocalHotspotConnection(
             _connectionState.value = ConnectionState.Connecting
             isHost = true
             
-            // Check WiFi state first - only ensure we're not connected to another network
+            // Check WiFi state first - ensure we're not connected to another network
             if (!isWiFiInCompatibleState()) {
                 val errorMsg = "WiFi is connected to a network. Please disconnect from WiFi to create a hotspot."
                 Log.w(TAG, errorMsg)
@@ -117,16 +129,6 @@ class LocalHotspotConnection(
                     _connectionState.value = ConnectionState.Error(errorMsg)
                 }
             }, null)
-        }
-    }
-    
-    private fun getHotspotErrorMessage(reason: Int): String {
-        return when (reason) {
-            1 -> "No channel available for hotspot" // ERROR_NO_CHANNEL
-            2 -> "Generic hotspot error" // ERROR_GENERIC  
-            3 -> "WiFi is in incompatible mode. Please disconnect from WiFi networks and try again." // ERROR_INCOMPATIBLE_MODE
-            4 -> "Tethering is not allowed on this device" // ERROR_TETHERING_DISALLOWED
-            else -> "Unknown hotspot error (code: $reason)"
         }
     }
     

@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiManager
+import android.net.wifi.WifiNetworkSuggestion
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
@@ -29,25 +30,31 @@ class DeviceConfigManager(private val context: Context) {
             
             // Step 1: Check if WiFi is connected to any network
             if (isConnectedToWiFiNetwork()) {
-                Log.d(TAG, "Device is connected to WiFi, disconnecting...")
+                Log.d(TAG, "Device is connected to WiFi, attempting to disconnect...")
                 
-                // Disconnect from current WiFi network
-                val disconnected = disconnectFromWiFi()
+                // Try multiple methods to disconnect from WiFi
+                val disconnected = forceDisconnectFromWiFi()
                 if (!disconnected) {
-                    return Result.failure(Exception("Failed to disconnect from WiFi. Please manually disconnect from WiFi networks in Settings."))
+                    return Result.failure(Exception("Please manually disconnect from WiFi networks in Settings and try again."))
                 }
                 
-                // Wait for disconnection to complete
-                delay(2000)
+                // Wait longer for disconnection to complete
+                delay(3000)
+                
+                // Verify disconnection worked
+                if (isConnectedToWiFiNetwork()) {
+                    Log.w(TAG, "Still connected to WiFi after disconnection attempt")
+                    return Result.failure(Exception("Failed to disconnect from WiFi. Please manually turn off WiFi or disconnect from all networks."))
+                }
             }
             
-            // Step 2: For hotspot, we DON'T need WiFi to be enabled
-            // The hotspot creates its own access point independently
-            Log.d(TAG, "WiFi state for hotspot - WiFi enabled: ${wifiManager.isWifiEnabled}")
-            
-            // Step 3: Verify final state - just ensure we're not connected to any network
+            // Step 2: Verify final state - ensure we're not connected to any network
             val isReady = !isConnectedToWiFiNetwork()
             Log.d(TAG, "Device preparation complete. Ready: $isReady")
+            
+            if (!isReady) {
+                return Result.failure(Exception("Device is still connected to WiFi. Please disconnect manually."))
+            }
             
             Result.success(isReady)
         } catch (e: Exception) {
@@ -69,7 +76,7 @@ class DeviceConfigManager(private val context: Context) {
             // Step 2: WiFi Direct works better when not connected to other networks
             if (isConnectedToWiFiNetwork()) {
                 Log.d(TAG, "Disconnecting from WiFi for better WiFi Direct performance...")
-                disconnectFromWiFi()
+                forceDisconnectFromWiFi()
                 delay(2000)
             }
             
@@ -92,6 +99,59 @@ class DeviceConfigManager(private val context: Context) {
     }
     
     /**
+     * Force disconnect from WiFi using multiple methods
+     */
+    private suspend fun forceDisconnectFromWiFi(): Boolean {
+        return try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                Log.d(TAG, "Android 10+ - attempting advanced WiFi disconnection...")
+                
+                // Method 1: Clear all network suggestions (if any)
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        wifiManager.removeNetworkSuggestions(emptyList())
+                    }
+                } catch (e: Exception) {
+                    Log.d(TAG, "No network suggestions to remove")
+                }
+                
+                // Method 2: Disable and re-enable WiFi to force disconnection
+                Log.d(TAG, "Cycling WiFi to force disconnection...")
+                @Suppress("DEPRECATION")
+                wifiManager.setWifiEnabled(false)
+                delay(2000)
+                
+                @Suppress("DEPRECATION") 
+                wifiManager.setWifiEnabled(true)
+                delay(3000)
+                
+                // Method 3: If still connected, try to disconnect from current network
+                if (isConnectedToWiFiNetwork()) {
+                    Log.d(TAG, "Still connected, attempting to disconnect current network...")
+                    try {
+                        wifiManager.disconnect()
+                        delay(2000)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Direct disconnect failed", e)
+                    }
+                }
+                
+                true
+            } else {
+                // On older versions, direct disconnect should work
+                Log.d(TAG, "Pre-Android 10 - using direct disconnect...")
+                @Suppress("DEPRECATION")
+                wifiManager.disconnect()
+                delay(2000)
+                true
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error force disconnecting from WiFi", e)
+            false
+        }
+    }
+    
+    /**
      * Get device configuration status for diagnostics
      */
     fun getDeviceStatus(): DeviceStatus {
@@ -107,11 +167,19 @@ class DeviceConfigManager(private val context: Context) {
     
     private fun isConnectedToWiFiNetwork(): Boolean {
         return try {
+            // Method 1: Check through ConnectivityManager
             val activeNetwork = connectivityManager.activeNetwork
             val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+            val isConnectedViaWiFi = networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
             
-            networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true &&
-            networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            // Method 2: Check through WifiManager connection info
+            val connectionInfo = wifiManager.connectionInfo
+            val isConnectedToNetwork = connectionInfo?.networkId != -1 && connectionInfo?.ssid != null && connectionInfo.ssid != "<unknown ssid>"
+            
+            val result = isConnectedViaWiFi && isConnectedToNetwork
+            Log.d(TAG, "WiFi connection check - ConnectivityManager: $isConnectedViaWiFi, WifiManager: $isConnectedToNetwork, Final: $result")
+            
+            result
         } catch (e: Exception) {
             Log.e(TAG, "Error checking WiFi connection", e)
             false
@@ -127,25 +195,6 @@ class DeviceConfigManager(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error getting network name", e)
             null
-        }
-    }
-    
-    private fun disconnectFromWiFi(): Boolean {
-        return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // On Android 10+, we can't directly disconnect
-                // The system handles this automatically when creating hotspot
-                Log.d(TAG, "Android 10+ - system will handle WiFi disconnection")
-                true
-            } else {
-                // On older versions, try to disconnect
-                @Suppress("DEPRECATION")
-                wifiManager.disconnect()
-                true
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error disconnecting from WiFi", e)
-            false
         }
     }
     

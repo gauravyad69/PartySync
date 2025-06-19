@@ -547,6 +547,67 @@ fun HostScreen(
                                             }
                                         }
                                         
+                                        state.message.contains("generic hotspot error", ignoreCase = true) -> {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    Octicons.Alert24,
+                                                    contentDescription = "Hotspot Error",
+                                                    tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                Text(
+                                                    "Hotspot Error:",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onErrorContainer
+                                                )
+                                            }
+                                            Text(
+                                                "The system couldn't create a hotspot. This usually happens when WiFi is still connected to a network.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onErrorContainer
+                                            )
+                                            
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            
+                                            Column(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        viewModel.retryWithWiFiReset()
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Icon(
+                                                        Octicons.Sync24,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text("Reset WiFi & Retry")
+                                                }
+                                                
+                                                OutlinedButton(
+                                                    onClick = { 
+                                                        viewModel.updateConnectionType(ConnectionType.WiFiDirect)
+                                                    },
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Icon(
+                                                        Octicons.Broadcast24,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.size(16.dp)
+                                                    )
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    Text("Try WiFi Direct Instead")
+                                                }
+                                            }
+                                        }
+                                        
                                         state.message.contains("incompatible mode", ignoreCase = true) -> {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically
@@ -880,7 +941,7 @@ fun HostScreen(
                                         }
                                     ) {
                                         Icon(
-                                            if (isPlaying) Octicons.ThreeBars16 else Octicons.Play24,
+                                            if (isPlaying) Octicons.Stop24 else Octicons.Play24,
                                             contentDescription = if (isPlaying) "Pause" else "Play",
                                             modifier = Modifier.size(32.dp)
                                         )
@@ -923,6 +984,72 @@ private fun DeviceStatus.isOptimal(connectionType: ConnectionType): Boolean {
         ConnectionType.WiFiDirect -> {
             // For WiFi Direct: need WiFi enabled and support
             wifiEnabled && wifiDirectSupported
+        }
+    }
+}
+
+// Add this after the device status card when hotspot is selected and WiFi is connected
+@Composable
+private fun HostScreen.manualWiFiDisconnectionCard(
+    deviceStatus: DeviceStatus,
+    onOpenWiFiSettings: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    Octicons.Info24,
+                    contentDescription = "Instructions",
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    "Manual WiFi Disconnection",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                "For Local Hotspot to work properly, you need to disconnect from WiFi networks:",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            Text(
+                "1. Open Settings → WiFi\n2. Disconnect from '${deviceStatus.connectedNetworkName}'\n3. Come back and try again",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onTertiaryContainer
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            OutlinedButton(
+                onClick = onOpenWiFiSettings,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    Octicons.Gear24,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Open WiFi Settings")
+            }
         }
     }
 }

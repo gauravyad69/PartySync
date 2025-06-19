@@ -280,6 +280,34 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
+    // Add function to retry with WiFi reset
+    fun retryWithWiFiReset() {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                
+                Log.d("HostViewModel", "Retrying with WiFi reset...")
+                
+                // Force a more aggressive WiFi reset
+                val result = deviceConfigManager.prepareForLocalHotspot()
+                
+                if (result.isSuccess) {
+                    // Try starting the host again
+                    startHosting()
+                } else {
+                    val error = result.exceptionOrNull()
+                    _uiState.value = _uiState.value.copy(
+                        connectionState = ConnectionState.Error(error?.message ?: "Failed to reset WiFi state")
+                    )
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    connectionState = ConnectionState.Error(e.message ?: "Unknown error")
+                )
+            }
+        }
+    }
+    
     override fun onCleared() {
         super.onCleared()
         audioStreamer.release()
