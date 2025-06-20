@@ -1,3 +1,9 @@
 <resources>
-    <string name="app_name">Speaker Share</string>
+    <string name="app_name">PartySync</string>
+    <string name="host_party">Host Party</string>
+    <string name="join_party">Join Party</string>
+    <string name="party_code">Party Code</string>
+    <string name="create_party">Create Party</string>
+    <string name="sync_music">Sync Music</string>
+    <string name="wireless_audio">Wireless Audio Sync</string>
 </resources>

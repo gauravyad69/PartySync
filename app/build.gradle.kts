@@ -6,17 +6,20 @@ plugins {
 }
 
 android {
-    namespace = "io.github.gauravyad69.speakershare"
+    namespace = "io.github.gauravyad69.partysync"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "io.github.gauravyad69.speakershare"
+        applicationId = "io.github.gauravyad69.partysync"
         minSdk = 24
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
     }
 
     buildTypes {
@@ -37,6 +40,14 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.8"
+    }
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
     }
 }
 
