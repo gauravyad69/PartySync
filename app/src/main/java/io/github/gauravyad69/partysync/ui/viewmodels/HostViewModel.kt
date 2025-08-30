@@ -251,6 +251,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     }
     fun switchToLocalHotspot() {
     Log.d("HostViewModel", "Switching to Local Hotspot due to WiFi Direct issues")
+    updateConnectionType(ConnectionType.LocalHotspot)
     _uiState.value = _uiState.value.copy(
         selectedConnectionType = ConnectionType.LocalHotspot,
         connectionState = ConnectionState.Disconnected
