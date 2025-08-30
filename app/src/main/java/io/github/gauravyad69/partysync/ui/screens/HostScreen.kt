@@ -1,8 +1,21 @@
 package io.github.gauravyad69.partysync.ui.screens
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -18,11 +31,25 @@ import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -32,9 +59,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gauravyad69.partysync.audio.AudioStreamingMode
 import io.github.gauravyad69.partysync.network.ConnectionState
 import io.github.gauravyad69.partysync.network.ConnectionType
-import io.github.gauravyad69.partysync.ui.components.RequestPermissions
-import io.github.gauravyad69.partysync.ui.viewmodels.HostViewModel
 import io.github.gauravyad69.partysync.ui.viewmodels.HostUiState
+import io.github.gauravyad69.partysync.ui.viewmodels.HostViewModel
+import io.github.gauravyad69.partysync.utils.RequestPermissions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,12 +70,13 @@ fun HostScreen(
     viewModel: HostViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    
+
     // Handle permission requests
     RequestPermissions(
-        permissionHandler = viewModel.permissionHandler
+        permissionHandler = viewModel.permissionHandler,
+        onPermissionsResult = { granted -> viewModel.onPermissionsResult(granted) }
     )
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -77,7 +105,7 @@ fun HostScreen(
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
-        
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -95,12 +123,14 @@ fun HostScreen(
                         onStartHosting = { viewModel.startHosting() }
                     )
                 }
+
                 is ConnectionState.Connecting -> {
                     ConnectingScreen(
                         uiState = uiState,
                         onCancel = viewModel::stopHosting
                     )
                 }
+
                 is ConnectionState.Connected -> {
                     HostingScreen(
                         uiState = uiState,
@@ -111,6 +141,7 @@ fun HostScreen(
                         viewModel = viewModel
                     )
                 }
+
                 is ConnectionState.Error -> {
                     ErrorScreen(
                         uiState = uiState,
@@ -163,7 +194,7 @@ private fun ConnectionSetupScreen(
             )
         }
     }
-    
+
     // Room Name Input
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -186,7 +217,7 @@ private fun ConnectionSetupScreen(
             )
         }
     }
-    
+
     // Connection Type Selection
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -200,7 +231,7 @@ private fun ConnectionSetupScreen(
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             ConnectionTypeCard(
                 type = ConnectionType.Bluetooth,
                 icon = Icons.Default.Bluetooth,
@@ -211,9 +242,9 @@ private fun ConnectionSetupScreen(
                 isRecommended = true,
                 onClick = { onConnectionTypeSelected(ConnectionType.Bluetooth) }
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             ConnectionTypeCard(
                 type = ConnectionType.WiFiDirect,
                 icon = Icons.Default.Wifi,
@@ -223,9 +254,9 @@ private fun ConnectionSetupScreen(
                 isSelected = uiState.selectedConnectionType == ConnectionType.WiFiDirect,
                 onClick = { onConnectionTypeSelected(ConnectionType.WiFiDirect) }
             )
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             ConnectionTypeCard(
                 type = ConnectionType.LocalHotspot,
                 icon = Icons.Default.Wifi,
@@ -237,7 +268,7 @@ private fun ConnectionSetupScreen(
             )
         }
     }
-    
+
     // Streaming Mode Selection
     Card(
         modifier = Modifier.fillMaxWidth()
@@ -256,7 +287,7 @@ private fun ConnectionSetupScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             StreamingModeCard(
                 mode = AudioStreamingMode.MICROPHONE,
                 icon = Icons.Default.Mic,
@@ -264,9 +295,9 @@ private fun ConnectionSetupScreen(
                 isEnabled = uiState.canChangeMode,
                 onClick = { onStreamingModeSelected(AudioStreamingMode.MICROPHONE) }
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             StreamingModeCard(
                 mode = AudioStreamingMode.SYSTEM_AUDIO,
                 icon = Icons.Default.PhoneAndroid,
@@ -274,9 +305,9 @@ private fun ConnectionSetupScreen(
                 isEnabled = uiState.canChangeMode,
                 onClick = { onStreamingModeSelected(AudioStreamingMode.SYSTEM_AUDIO) }
             )
-            
+
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             StreamingModeCard(
                 mode = AudioStreamingMode.CUSTOM_PLAYER,
                 icon = Icons.Default.LibraryMusic,
@@ -284,7 +315,7 @@ private fun ConnectionSetupScreen(
                 isEnabled = uiState.canChangeMode,
                 onClick = { onStreamingModeSelected(AudioStreamingMode.CUSTOM_PLAYER) }
             )
-            
+
             if (!uiState.canChangeMode) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
@@ -306,7 +337,7 @@ private fun ConnectionSetupScreen(
             }
         }
     }
-    
+
     // Device Status - simplified for now
     // TODO: Add device status checking back once DeviceStatus is properly integrated
     // if (!uiState.deviceStatus.isOptimal(uiState.selectedConnectionType)) {
@@ -314,8 +345,8 @@ private fun ConnectionSetupScreen(
     //         connectionType = uiState.selectedConnectionType
     //     )
     // }
-    
-        // Start Button
+
+    // Start Button
     Button(
         onClick = onStartHosting,
         modifier = Modifier
@@ -323,11 +354,11 @@ private fun ConnectionSetupScreen(
             .height(56.dp),
         enabled = uiState.roomName.isNotBlank()
     ) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp)
-            )
+        Icon(
+            imageVector = Icons.Default.Share,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp)
+        )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "Start Hosting",
@@ -352,14 +383,14 @@ private fun ConnectionTypeCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
                 MaterialTheme.colorScheme.surface
         ),
-        border = if (isSelected) 
-            null 
-        else 
+        border = if (isSelected)
+            null
+        else
             CardDefaults.outlinedCardBorder()
     ) {
         Row(
@@ -368,9 +399,9 @@ private fun ConnectionTypeCard(
         ) {
             Surface(
                 shape = RoundedCornerShape(12.dp),
-                color = if (isSelected) 
-                    MaterialTheme.colorScheme.primary 
-                else 
+                color = if (isSelected)
+                    MaterialTheme.colorScheme.primary
+                else
                     MaterialTheme.colorScheme.surfaceVariant,
                 modifier = Modifier.size(48.dp)
             ) {
@@ -379,16 +410,16 @@ private fun ConnectionTypeCard(
                         imageVector = icon,
                         contentDescription = title,
                         modifier = Modifier.size(24.dp),
-                        tint = if (isSelected) 
-                            MaterialTheme.colorScheme.onPrimary 
-                        else 
+                        tint = if (isSelected)
+                            MaterialTheme.colorScheme.onPrimary
+                        else
                             MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -427,7 +458,7 @@ private fun ConnectionTypeCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
@@ -505,7 +536,7 @@ private fun ConnectingScreen(
                         strokeWidth = 6.dp
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     // Progress percentage
                     Text(
                         text = "${(state.progress * 100).toInt()}%",
@@ -513,16 +544,16 @@ private fun ConnectingScreen(
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
+
                     Text(
                         text = state.message,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center
                     )
-                    
+
                     Text(
                         text = "Setting up ${uiState.selectedConnectionType.displayName} connection",
                         style = MaterialTheme.typography.bodyMedium,
@@ -530,6 +561,7 @@ private fun ConnectingScreen(
                         textAlign = TextAlign.Center
                     )
                 }
+
                 else -> {
                     CircularProgressIndicator(
                         modifier = Modifier.size(64.dp)
@@ -548,9 +580,9 @@ private fun ConnectingScreen(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             // Show specific tips based on connection type and progress
             when (uiState.selectedConnectionType) {
                 ConnectionType.WiFiDirect -> {
@@ -588,9 +620,10 @@ private fun ConnectingScreen(
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
+
                 else -> {}
             }
-            
+
             OutlinedButton(
                 onClick = onCancel
             ) {
@@ -646,9 +679,9 @@ private fun HostingScreen(
             )
         }
     }
-    
+
     Spacer(modifier = Modifier.height(16.dp))
-    
+
     // Audio Streaming Controls
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -700,7 +733,7 @@ private fun HostingScreen(
                         }
                     }
                 }
-                
+
                 // Audio capture toggle button
                 Button(
                     onClick = {
@@ -725,10 +758,10 @@ private fun HostingScreen(
                     Text(if (uiState.isCapturingAudio) "Stop Audio" else "Start Audio")
                 }
             }
-            
+
             if (uiState.isCapturingAudio) {
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 when (uiState.selectedStreamingMode) {
                     AudioStreamingMode.MICROPHONE, AudioStreamingMode.SYSTEM_AUDIO -> {
                         // Audio level indicator for live audio
@@ -755,6 +788,7 @@ private fun HostingScreen(
                             )
                         }
                     }
+
                     AudioStreamingMode.CUSTOM_PLAYER -> {
                         // Music player controls
                         Column {
@@ -780,13 +814,13 @@ private fun HostingScreen(
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("Load Music")
                                 }
-                                
+
                                 IconButton(
                                     onClick = { viewModel.pausePlayback() }
                                 ) {
                                     Icon(Icons.Default.MusicNote, contentDescription = "Pause")
                                 }
-                                
+
                                 IconButton(
                                     onClick = { viewModel.resumePlayback() }
                                 ) {
@@ -797,7 +831,7 @@ private fun HostingScreen(
                     }
                 }
             }
-            
+
             // Connected clients indicator
             if (uiState.streamingClients.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -821,9 +855,9 @@ private fun HostingScreen(
             }
         }
     }
-    
+
     Spacer(modifier = Modifier.height(16.dp))
-    
+
     // Stop Hosting Button
     Button(
         onClick = onStopHosting,
@@ -867,9 +901,9 @@ private fun ErrorScreen(
                 color = MaterialTheme.colorScheme.onErrorContainer,
                 textAlign = TextAlign.Center
             )
-            
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             Row(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -932,9 +966,9 @@ private fun StreamingModeCard(
                     MaterialTheme.colorScheme.onSurfaceVariant
                 }
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -948,7 +982,7 @@ private fun StreamingModeCard(
                         MaterialTheme.colorScheme.onSurface
                     }
                 )
-                
+
                 Text(
                     text = mode.description,
                     style = MaterialTheme.typography.bodySmall,
@@ -960,7 +994,7 @@ private fun StreamingModeCard(
                     maxLines = 2
                 )
             }
-            
+
             if (isSelected) {
                 Icon(
                     imageVector = Icons.Default.CheckCircle,
