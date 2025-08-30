@@ -44,7 +44,7 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
     
     private val networkManager = NetworkManager(application)
     private val audioStreamer = ExoPlayerAudioStreamer(application)
-    private val permissionHandler = PermissionHandler(application)
+    val permissionHandler = PermissionHandler(application)
     
     // New audio playback components
     private val audioPlaybackManager = AudioPlaybackManager()

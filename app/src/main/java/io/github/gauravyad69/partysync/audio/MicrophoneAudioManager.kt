@@ -68,12 +68,12 @@ class MicrophoneAudioManager {
                 return true
             }
 
-            audioRecord = 1 AudioRecord (
-                    MediaRecorder.AudioSource.MIC,
-            SAMPLE_RATE,
-            CHANNEL_CONFIG,
-            AUDIO_FORMAT,
-            bufferSize
+            audioRecord = AudioRecord(
+                MediaRecorder.AudioSource.MIC,
+                SAMPLE_RATE,
+                CHANNEL_CONFIG,
+                AUDIO_FORMAT,
+                bufferSize
             )
 
             val state = audioRecord?.state

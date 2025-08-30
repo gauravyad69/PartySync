@@ -62,6 +62,7 @@ import io.github.gauravyad69.partysync.network.ConnectionType
 import io.github.gauravyad69.partysync.network.NetworkDevice
 import io.github.gauravyad69.partysync.ui.viewmodels.JoinUiState
 import io.github.gauravyad69.partysync.ui.viewmodels.JoinViewModel
+import io.github.gauravyad69.partysync.utils.RequestPermissions
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -109,7 +110,7 @@ fun JoinScreen(
         when {
             !uiState.hasPermissions -> {
                 PermissionRequiredScreen(
-                    onRequestPermissions = viewModel::requestPermissions
+                    viewModel = viewModel
                 )
             }
 
@@ -139,8 +140,15 @@ fun JoinScreen(
 
 @Composable
 private fun PermissionRequiredScreen(
-    onRequestPermissions: () -> Unit
+    viewModel: JoinViewModel
 ) {
+    // Use the RequestPermissions composable to handle permission requests
+    RequestPermissions(
+        permissionHandler = viewModel.permissionHandler,
+        onPermissionsResult = viewModel::onPermissionsResult
+    )
+    
+    // Show permission request UI
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -161,18 +169,13 @@ private fun PermissionRequiredScreen(
             fontWeight = FontWeight.Bold
         )
         Text(
-            text = "PartySync needs permission to discover and connect to nearby devices",
+            text = "PartySync is requesting permissions to discover and connect to nearby devices",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(24.dp))
-        Button(
-            onClick = onRequestPermissions,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Grant Permissions")
-        }
+        CircularProgressIndicator()
     }
 }
 
