@@ -274,7 +274,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     fun prepareDevice() {
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Preparing device...", 0.5f))
                 
                 val result = when (_uiState.value.selectedConnectionType) {
                     ConnectionType.Bluetooth -> deviceConfigManager.prepareForBluetooth()
@@ -547,7 +547,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         Log.d("HostViewModel", "Resetting WiFi Direct state")
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Resetting WiFi Direct...", 0.3f))
                 
                 // Reset WiFi Direct state and try again
                 networkManager.disconnect()
@@ -567,7 +567,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         Log.d("HostViewModel", "Retrying with WiFi reset")
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Retrying with WiFi reset...", 0.2f))
                 
                 // First try to prepare device, then start hosting
                 val result = when (_uiState.value.selectedConnectionType) {

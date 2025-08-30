@@ -142,10 +142,10 @@ private fun DisconnectedContent(connectionState: ConnectionState) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         val (icon, color, text) = when (connectionState) {
-            ConnectionState.Connecting -> Triple(
+            is ConnectionState.Connecting -> Triple(
                 Octicons.Clock24,
                 MaterialTheme.colorScheme.secondary,
-                "Connecting..."
+                connectionState.message
             )
             is ConnectionState.Error -> Triple(
                 Octicons.Alert24,

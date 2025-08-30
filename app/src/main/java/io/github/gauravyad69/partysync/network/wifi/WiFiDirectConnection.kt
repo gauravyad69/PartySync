@@ -66,7 +66,7 @@ class WiFiDirectConnection(
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     override suspend fun startHost(roomName: String): Result<String> {
         return try {
-            _connectionState.value = ConnectionState.Connecting
+            _connectionState.value = ConnectionState.Connecting("Creating WiFi Direct group...")
             
             // Check if WiFi P2P is supported
             if (!isWiFiP2pSupported()) {
@@ -191,7 +191,7 @@ class WiFiDirectConnection(
     @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.NEARBY_WIFI_DEVICES])
     override suspend fun connectToHost(device: NetworkDevice): Result<Unit> {
         return try {
-            _connectionState.value = ConnectionState.Connecting
+            _connectionState.value = ConnectionState.Connecting("Connecting to WiFi Direct group...")
             
             val config = WifiP2pConfig().apply {
                 deviceAddress = device.address

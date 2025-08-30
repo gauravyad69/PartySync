@@ -79,7 +79,7 @@ class LocalHotspotConnection(
     
     override suspend fun startHost(roomName: String): Result<String> {
         return try {
-            _connectionState.value = ConnectionState.Connecting
+            _connectionState.value = ConnectionState.Connecting("Starting WiFi hotspot...")
             isHost = true
             
             // Check WiFi state first - ensure we're not connected to another network
@@ -154,7 +154,7 @@ class LocalHotspotConnection(
     
     override suspend fun connectToHost(device: NetworkDevice): Result<Unit> {
         return try {
-            _connectionState.value = ConnectionState.Connecting
+            _connectionState.value = ConnectionState.Connecting("Connecting to hotspot...")
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 connectWithNetworkSpecifier(device)

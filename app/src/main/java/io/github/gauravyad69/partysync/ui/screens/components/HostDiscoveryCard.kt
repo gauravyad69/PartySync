@@ -178,7 +178,7 @@ private fun HostList(
         items(hosts) { host ->
             HostItem(
                 host = host,
-                isConnecting = connectionState == ConnectionState.Connecting,
+                isConnecting = connectionState is ConnectionState.Connecting,
                 onConnect = { onConnectToHost(host) }
             )
         }

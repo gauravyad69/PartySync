@@ -68,7 +68,7 @@ class BluetoothConnection(
                 return Result.failure(Exception("Bluetooth permissions not granted"))
             }
             
-            _connectionState.value = ConnectionState.Connecting
+            _connectionState.value = ConnectionState.Connecting("Starting Bluetooth server...")
             isHost = true
             
             // Make device discoverable
@@ -132,7 +132,7 @@ class BluetoothConnection(
                 return Result.failure(Exception("Bluetooth permissions not granted"))
             }
             
-            _connectionState.value = ConnectionState.Connecting
+            _connectionState.value = ConnectionState.Connecting("Connecting to Bluetooth device...")
             
             val bluetoothDevice = bluetoothAdapter?.getRemoteDevice(device.address)
                 ?: return Result.failure(Exception("Invalid Bluetooth device"))

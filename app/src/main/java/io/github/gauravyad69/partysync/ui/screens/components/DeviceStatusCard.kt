@@ -195,9 +195,9 @@ private fun DeviceOptimizationSection(
         OutlinedButton(
             onClick = onPrepareDevice,
             modifier = Modifier.fillMaxWidth(),
-            enabled = connectionState != ConnectionState.Connecting
+            enabled = connectionState !is ConnectionState.Connecting
         ) {
-            if (connectionState == ConnectionState.Connecting) {
+            if (connectionState is ConnectionState.Connecting) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(16.dp),
                     strokeWidth = 2.dp
