@@ -1,7 +1,20 @@
 package io.github.gauravyad69.partysync.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -10,27 +23,45 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gauravyad69.partysync.network.ConnectionState
 import io.github.gauravyad69.partysync.network.ConnectionType
 import io.github.gauravyad69.partysync.network.NetworkDevice
-import io.github.gauravyad69.partysync.ui.viewmodels.JoinViewModel
 import io.github.gauravyad69.partysync.ui.viewmodels.JoinUiState
+import io.github.gauravyad69.partysync.ui.viewmodels.JoinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,12 +71,12 @@ fun JoinScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedConnectionType by remember { mutableStateOf(ConnectionType.Bluetooth) }
-    
+
     // Auto-start scanning with Bluetooth when screen opens
     LaunchedEffect(Unit) {
         viewModel.startScanning(ConnectionType.Bluetooth)
     }
-    
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -74,19 +105,22 @@ fun JoinScreen(
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
-        
+
         when {
             !uiState.hasPermissions -> {
                 PermissionRequiredScreen(
                     onRequestPermissions = viewModel::requestPermissions
                 )
             }
+
             uiState.isConnected -> {
                 ConnectedScreen(
                     uiState = uiState,
-                    onDisconnect = viewModel::disconnect
+                    onDisconnect = viewModel::disconnect,
+                    viewModel = viewModel
                 )
             }
+
             else -> {
                 ScanningScreen(
                     uiState = uiState,
@@ -187,7 +221,7 @@ private fun ScanningScreen(
                 )
             }
         }
-        
+
         // Connection Type Selector
         Card(
             modifier = Modifier.fillMaxWidth()
@@ -205,7 +239,7 @@ private fun ScanningScreen(
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f)
                     )
-                    
+
                     if (uiState.isScanning) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
@@ -220,9 +254,9 @@ private fun ScanningScreen(
                         }
                     }
                 }
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
@@ -232,14 +266,14 @@ private fun ScanningScreen(
                         isSelected = selectedConnectionType == ConnectionType.Bluetooth,
                         onClick = { onConnectionTypeChanged(ConnectionType.Bluetooth) }
                     )
-                    
+
                     ConnectionTypeChip(
                         type = ConnectionType.WiFiDirect,
                         icon = Icons.Default.Wifi,
                         isSelected = selectedConnectionType == ConnectionType.WiFiDirect,
                         onClick = { onConnectionTypeChanged(ConnectionType.WiFiDirect) }
                     )
-                    
+
                     ConnectionTypeChip(
                         type = ConnectionType.LocalHotspot,
                         icon = Icons.Default.Wifi,
@@ -249,7 +283,7 @@ private fun ScanningScreen(
                 }
             }
         }
-        
+
         // Available Parties List
         Card(
             modifier = Modifier.fillMaxSize()
@@ -262,9 +296,9 @@ private fun ScanningScreen(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                
+
                 Spacer(modifier = Modifier.height(12.dp))
-                
+
                 when {
                     uiState.connectionState is ConnectionState.Error -> {
                         ErrorMessage(
@@ -272,15 +306,18 @@ private fun ScanningScreen(
                             onRetry = onRefresh
                         )
                     }
+
                     uiState.availableHosts.isEmpty() && uiState.isScanning -> {
                         ScanningIndicator(connectionType = selectedConnectionType)
                     }
+
                     uiState.availableHosts.isEmpty() -> {
                         NoPartiesFound(
                             connectionType = selectedConnectionType,
                             onRefresh = onRefresh
                         )
                     }
+
                     else -> {
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -352,9 +389,9 @@ private fun PartyCard(
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -369,7 +406,7 @@ private fun PartyCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             Button(onClick = onJoin) {
                 Text("Join")
             }
@@ -467,7 +504,8 @@ private fun ErrorMessage(
 @Composable
 private fun ConnectedScreen(
     uiState: JoinUiState,
-    onDisconnect: () -> Unit
+    onDisconnect: () -> Unit,
+    viewModel: JoinViewModel = viewModel()
 ) {
     Column(
         modifier = Modifier
@@ -507,8 +545,143 @@ private fun ConnectedScreen(
                 )
             }
         }
-        
-        // Playback Status
+
+        // Audio Playback Status
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Audio Playback",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+
+                    // Playback status indicator
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (uiState.isPlayingAudio) Icons.Default.MusicNote else Icons.Default.Warning,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = if (uiState.isPlayingAudio) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (uiState.isPlayingAudio) "Playing" else "Waiting",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (uiState.isPlayingAudio) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+
+                if (uiState.isPlayingAudio) {
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Buffer level indicator
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Buffer:",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.width(60.dp)
+                        )
+                        LinearProgressIndicator(
+                            progress = { uiState.bufferLevel },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(6.dp),
+                            color = when {
+                                uiState.bufferLevel > 0.7f -> MaterialTheme.colorScheme.primary
+                                uiState.bufferLevel > 0.3f -> MaterialTheme.colorScheme.tertiary
+                                else -> MaterialTheme.colorScheme.error
+                            },
+                        )
+                        Text(
+                            text = "${(uiState.bufferLevel * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+
+                    // Latency indicator
+                    if (uiState.playbackLatency > 0) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Latency:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.width(60.dp)
+                            )
+                            Text(
+                                text = "${uiState.playbackLatency}ms",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = when {
+                                    uiState.playbackLatency < 100 -> MaterialTheme.colorScheme.primary
+                                    uiState.playbackLatency < 300 -> MaterialTheme.colorScheme.tertiary
+                                    else -> MaterialTheme.colorScheme.error
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Playback controls
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Button(
+                        onClick = { viewModel.clearAudioBuffer() },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Text("Clear Buffer")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (uiState.isPlayingAudio) {
+                                viewModel.stopAudioPlayback()
+                            } else {
+                                // Restart playback - assume we know the host address from connection
+                                // This is a simplified approach - in real implementation we'd store this
+                                viewModel.startAudioPlayback("192.168.1.100") // Placeholder
+                            }
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = if (uiState.isPlayingAudio) {
+                            ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        } else {
+                            ButtonDefaults.buttonColors()
+                        }
+                    ) {
+                        Text(if (uiState.isPlayingAudio) "Stop Audio" else "Start Audio")
+                    }
+                }
+            }
+        }
+
+        // Playback Status for legacy sync (if available)
         uiState.playbackState?.let { playback ->
             Card(
                 modifier = Modifier.fillMaxWidth()
@@ -517,7 +690,7 @@ private fun ConnectedScreen(
                     modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
-                        text = "Now Playing",
+                        text = "Music Sync Status",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -534,7 +707,7 @@ private fun ConnectedScreen(
                 }
             }
         }
-        
+
         // Disconnect Button
         OutlinedButton(
             onClick = onDisconnect,

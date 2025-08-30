@@ -95,7 +95,8 @@ fun HostScreen(
                         onStopHosting = viewModel::stopHosting,
                         onPlayMusic = viewModel::playMusic,
                         onPauseMusic = viewModel::pauseMusic,
-                        onSeek = viewModel::seekTo
+                        onSeek = viewModel::seekTo,
+                        viewModel = viewModel
                     )
                 }
                 is ConnectionState.Error -> {
@@ -444,7 +445,8 @@ private fun HostingScreen(
     onStopHosting: () -> Unit,
     onPlayMusic: () -> Unit,
     onPauseMusic: () -> Unit,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit,
+    viewModel: HostViewModel = viewModel()
 ) {
     // Success state - show hosting controls
     Card(
@@ -481,6 +483,106 @@ private fun HostingScreen(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
+        }
+    }
+    
+    Spacer(modifier = Modifier.height(16.dp))
+    
+    // Audio Streaming Controls
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Audio Streaming",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                
+                // Audio capture toggle button
+                Button(
+                    onClick = {
+                        if (uiState.isCapturingAudio) {
+                            viewModel.stopAudioCapture()
+                        } else {
+                            viewModel.startAudioCapture()
+                        }
+                    },
+                    colors = if (uiState.isCapturingAudio) {
+                        ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                    } else {
+                        ButtonDefaults.buttonColors()
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (uiState.isCapturingAudio) Icons.Default.MusicNote else Icons.Default.MusicNote,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (uiState.isCapturingAudio) "Stop Audio" else "Start Audio")
+                }
+            }
+            
+            if (uiState.isCapturingAudio) {
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // Audio level indicator
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Audio Level:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.width(80.dp)
+                    )
+                    LinearProgressIndicator(
+                        progress = { uiState.audioLevel },
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(8.dp),
+                        color = if (uiState.audioLevel > 0.1f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                    )
+                    Text(
+                        text = "${(uiState.audioLevel * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
+            
+            // Connected clients indicator
+            if (uiState.streamingClients.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Groups,
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "${uiState.streamingClients.size} clients receiving audio",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
     
