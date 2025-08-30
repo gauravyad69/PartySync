@@ -35,7 +35,7 @@ fun JoinScreen(
     val permissionHandler = remember { PermissionHandler(context) }
     
     var showPermissionDialog by remember { mutableStateOf(false) }
-    var selectedConnectionType by remember { mutableStateOf(ConnectionType.WiFiDirect) }
+    var selectedConnectionType by remember { mutableStateOf(ConnectionType.Bluetooth) }
     
     LaunchedEffect(Unit) {
         if (!uiState.hasPermissions) {
@@ -91,6 +91,15 @@ fun JoinScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceEvenly
                     ) {
+                        FilterChip(
+                            onClick = { 
+                                selectedConnectionType = ConnectionType.Bluetooth
+                                viewModel.startScanning(ConnectionType.Bluetooth)
+                            },
+                            label = { Text("Bluetooth") },
+                            selected = selectedConnectionType == ConnectionType.Bluetooth
+                        )
+                        
                         FilterChip(
                             onClick = { 
                                 selectedConnectionType = ConnectionType.WiFiDirect

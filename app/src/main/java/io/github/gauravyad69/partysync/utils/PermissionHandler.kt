@@ -28,6 +28,18 @@ class PermissionHandler(private val context: Context) {
             Manifest.permission.MODIFY_AUDIO_SETTINGS
         )
         
+        // Bluetooth permissions based on Android version
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            // Android 12+ (API 31+) - Use new Bluetooth permissions
+            permissions.add(Manifest.permission.BLUETOOTH_CONNECT)
+            permissions.add(Manifest.permission.BLUETOOTH_SCAN)
+            permissions.add(Manifest.permission.BLUETOOTH_ADVERTISE)
+        } else {
+            // Pre-Android 12 - Use legacy Bluetooth permissions
+            permissions.add(Manifest.permission.BLUETOOTH)
+            permissions.add(Manifest.permission.BLUETOOTH_ADMIN)
+        }
+        
         // Handle storage permissions based on Android version
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+ (API 33+) - Use granular media permissions

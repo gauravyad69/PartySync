@@ -46,7 +46,7 @@ class BluetoothDiscoveryReceiver(
                         
                         // Check if this device might be running PartySync
                         // In a real implementation, you might filter by service UUIDs or device name patterns
-                        if (isPartySync Compatible(bluetoothDevice)) {
+                        if (isPartySyncCompatible(bluetoothDevice)) {
                             val networkDevice = NetworkDevice(
                                 id = deviceAddress,
                                 name = deviceName,

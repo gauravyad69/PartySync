@@ -24,7 +24,7 @@ import kotlinx.coroutines.launch
 
 data class HostUiState(
     val roomName: String = "",
-    val selectedConnectionType: ConnectionType = ConnectionType.WiFiDirect,
+    val selectedConnectionType: ConnectionType = ConnectionType.Bluetooth,
     val connectionState: ConnectionState = ConnectionState.Disconnected,
     val isHosting: Boolean = false,
     val connectedDevices: List<String> = emptyList(),
@@ -72,6 +72,10 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                 
                 // Step 1: Prepare device for the selected connection type
                 val preparationResult = when (_uiState.value.selectedConnectionType) {
+                    ConnectionType.Bluetooth -> {
+                        Log.d("HostViewModel", "Preparing device for Bluetooth...")
+                        deviceConfigManager.prepareForBluetooth()
+                    }
                     ConnectionType.LocalHotspot -> {
                         Log.d("HostViewModel", "Preparing device for Local Hotspot...")
                         deviceConfigManager.prepareForLocalHotspot()
@@ -135,6 +139,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
                 
                 val result = when (_uiState.value.selectedConnectionType) {
+                    ConnectionType.Bluetooth -> deviceConfigManager.prepareForBluetooth()
                     ConnectionType.LocalHotspot -> deviceConfigManager.prepareForLocalHotspot()
                     ConnectionType.WiFiDirect -> deviceConfigManager.prepareForWiFiDirect()
                 }
@@ -286,6 +291,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                 
                 // First try to prepare device, then start hosting
                 val result = when (_uiState.value.selectedConnectionType) {
+                    ConnectionType.Bluetooth -> deviceConfigManager.prepareForBluetooth()
                     ConnectionType.LocalHotspot -> deviceConfigManager.prepareForLocalHotspot()
                     ConnectionType.WiFiDirect -> deviceConfigManager.prepareForWiFiDirect()
                 }

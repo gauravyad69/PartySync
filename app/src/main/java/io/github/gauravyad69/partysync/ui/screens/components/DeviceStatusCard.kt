@@ -132,7 +132,7 @@ private fun DeviceStatusInfo(
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
-            "WiFi Direct: ${if (deviceStatus.wifiDirectSupported) "✓" else "✗"} | Hotspot: ${if (deviceStatus.hotspotSupported) "✓" else "✗"}",
+            "Bluetooth: ${if (deviceStatus.bluetoothSupported) "✓" else "✗"} | WiFi Direct: ${if (deviceStatus.wifiDirectSupported) "✓" else "✗"} | Hotspot: ${if (deviceStatus.hotspotSupported) "✓" else "✗"}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -147,6 +147,13 @@ private fun DeviceOptimizationSection(
     onPrepareDevice: () -> Unit
 ) {
     val recommendation = when (selectedConnectionType) {
+        ConnectionType.Bluetooth -> {
+            when {
+                !deviceStatus.bluetoothSupported -> "Bluetooth is not supported on this device"
+                !deviceStatus.bluetoothEnabled -> "Bluetooth needs to be enabled"
+                else -> "Device is ready for Bluetooth"
+            }
+        }
         ConnectionType.LocalHotspot -> {
             when {
                 !deviceStatus.hotspotSupported -> "Local Hotspot is not supported on this device"
@@ -182,7 +189,8 @@ private fun DeviceOptimizationSection(
     }
     
     if (deviceStatus.connectedToWiFi || 
-        (selectedConnectionType == ConnectionType.WiFiDirect && !deviceStatus.wifiEnabled)) {
+        (selectedConnectionType == ConnectionType.WiFiDirect && !deviceStatus.wifiEnabled) ||
+        (selectedConnectionType == ConnectionType.Bluetooth && !deviceStatus.bluetoothEnabled)) {
         Spacer(modifier = Modifier.height(8.dp))
         OutlinedButton(
             onClick = onPrepareDevice,
@@ -232,6 +240,9 @@ private fun OptimalStatusIndicator(selectedConnectionType: ConnectionType) {
 @Composable
 private fun DeviceStatus.isOptimal(connectionType: ConnectionType): Boolean {
     return when (connectionType) {
+        ConnectionType.Bluetooth -> {
+            bluetoothEnabled && bluetoothSupported
+        }
         ConnectionType.LocalHotspot -> {
             !connectedToWiFi && hotspotSupported
         }

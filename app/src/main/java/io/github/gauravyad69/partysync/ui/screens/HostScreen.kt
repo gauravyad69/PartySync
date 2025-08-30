@@ -192,6 +192,21 @@ private fun RoomConfigurationSection(
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             FilterChip(
+                onClick = { onConnectionTypeChange(ConnectionType.Bluetooth) },
+                label = { Text("Bluetooth") },
+                selected = selectedConnectionType == ConnectionType.Bluetooth,
+                leadingIcon = if (selectedConnectionType == ConnectionType.Bluetooth) {
+                    {
+                        Icon(
+                            Octicons.DeviceMobile24,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                } else null
+            )
+            
+            FilterChip(
                 onClick = { onConnectionTypeChange(ConnectionType.WiFiDirect) },
                 label = { Text("WiFi Direct") },
                 selected = selectedConnectionType == ConnectionType.WiFiDirect,
