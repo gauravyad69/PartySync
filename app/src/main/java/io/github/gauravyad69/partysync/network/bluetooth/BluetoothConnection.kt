@@ -260,10 +260,16 @@ class BluetoothConnection(
         Thread {
             try {
                 val buffer = ByteArray(AUDIO_BUFFER_SIZE)
-                while (!socket.isClosed && socket.isConnected) {
-                    val bytesRead = socket.inputStream.read(buffer)
-                    if (bytesRead > 0) {
-                        onDataReceived(buffer.copyOf(bytesRead))
+                while (socket.isConnected) {
+                    try {
+                        val bytesRead = socket.inputStream.read(buffer)
+                        if (bytesRead > 0) {
+                            onDataReceived(buffer.copyOf(bytesRead))
+                        }
+                    } catch (e: IOException) {
+                        // Socket closed or connection lost
+                        Log.d(TAG, "Socket disconnected, stopping data reception")
+                        break
                     }
                 }
             } catch (e: Exception) {

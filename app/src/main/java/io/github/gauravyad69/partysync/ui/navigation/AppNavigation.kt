@@ -9,8 +9,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import io.github.gauravyad69.partysync.ui.screens.HomeScreen
-import io.github.gauravyad69.partysync.ui.screens.HostScreen
-import io.github.gauravyad69.partysync.ui.screens.JoinScreen
+import io.github.gauravyad69.partysync.ui.screens.HostScreenNew
+import io.github.gauravyad69.partysync.ui.screens.JoinScreenNew
 
 @Composable
 fun AppNavigation(
@@ -32,13 +32,13 @@ fun AppNavigation(
             }
 
             composable("host") {
-                HostScreen(
+                HostScreenNew(
                     onBack = { navController.popBackStack() }
                 )
             }
 
             composable("join") {
-                JoinScreen(
+                JoinScreenNew(
                     onBack = { navController.popBackStack() }
                 )
             }

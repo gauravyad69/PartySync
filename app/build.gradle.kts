@@ -76,6 +76,13 @@ dependencies {
     // Serialization
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
 
+    // Icons - Extended Material Icons
+    implementation("androidx.compose.material:material-icons-extended:1.5.8")
+    
+    // Additional Icon Libraries
+    implementation("br.com.devsrsouza.compose.icons:feather:1.1.1")
+    implementation("br.com.devsrsouza.compose.icons:font-awesome:1.1.1")
+
     implementation("br.com.devsrsouza.compose.icons:octicons:1.1.1")
 
     // Media/Audio
