@@ -143,19 +143,19 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         
         // Observe audio streaming states
         viewModelScope.launch {
-            audioCaptureManager.isCapturing.collectLatest { isCapturing ->
+            audioStreamingManager.isStreaming.collectLatest { isCapturing ->
                 _uiState.value = _uiState.value.copy(isCapturingAudio = isCapturing)
             }
         }
         
         viewModelScope.launch {
-            audioCaptureManager.audioLevel.collectLatest { level ->
+            audioStreamingManager.audioLevel.collectLatest { level ->
                 _uiState.value = _uiState.value.copy(audioLevel = level)
             }
         }
         
         viewModelScope.launch {
-            audioStreamProtocol.connectedClients.collectLatest { clients ->
+            audioStreamingManager.connectedClients.collectLatest { clients ->
                 _uiState.value = _uiState.value.copy(streamingClients = clients)
             }
         }
