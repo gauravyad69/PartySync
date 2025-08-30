@@ -15,7 +15,10 @@ import kotlinx.coroutines.flow.combine
  * - System Audio: Stream device's audio output
  * - Custom Player: Synchronized music playback
  */
-class AudioStreamingManager(private val context: Context) {
+class AudioStreamingManager(
+    private val context: Context,
+    private val externalAudioStreamProtocol: AudioStreamProtocol? = null
+) {
     private val tag = "AudioStreamingManager"
     
     // Mode-specific managers
@@ -25,8 +28,8 @@ class AudioStreamingManager(private val context: Context) {
     } else null
     private val customPlayerManager = CustomPlayerManager(context)
     
-    // Network streaming
-    private val audioStreamProtocol = AudioStreamProtocol()
+    // Network streaming - use external instance if provided, otherwise create new
+    private val audioStreamProtocol = externalAudioStreamProtocol ?: AudioStreamProtocol()
     
     // State management
     private val _currentMode = MutableStateFlow(AudioStreamingMode.MICROPHONE)

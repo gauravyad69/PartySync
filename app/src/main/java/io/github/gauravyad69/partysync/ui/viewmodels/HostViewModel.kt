@@ -53,8 +53,8 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     
     // New audio streaming components
     private val audioCaptureManager = AudioCaptureManager()
-    private val audioStreamingManager = AudioStreamingManager(application)
     private val audioStreamProtocol = AudioStreamProtocol()
+    private val audioStreamingManager = AudioStreamingManager(application, audioStreamProtocol)
     
     private var currentConnection: NetworkConnection? = null
     private var syncManager: SyncManager? = null
@@ -377,13 +377,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         
-        // Start audio stream server
-        if (!audioStreamProtocol.startAsServer()) {
-            Log.e("HostViewModel", "Failed to start audio stream server")
-            return
-        }
-        
-        // Start streaming with the selected mode
+        // Start streaming with the selected mode - AudioStreamingManager will handle server start
         val mode = _uiState.value.selectedStreamingMode
         val config = AudioStreamingConfig(
             mode = mode,
