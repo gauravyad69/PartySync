@@ -4,6 +4,8 @@ import android.app.Application
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.gauravyad69.partysync.audio.AudioCaptureManager
+import io.github.gauravyad69.partysync.audio.AudioStreamProtocol
 import io.github.gauravyad69.partysync.audio.AudioTrack
 import io.github.gauravyad69.partysync.audio.ExoPlayerAudioStreamer
 import io.github.gauravyad69.partysync.audio.SyncedPlayback
@@ -30,7 +32,11 @@ data class HostUiState(
     val connectedDevices: List<String> = emptyList(),
     val currentTrack: AudioTrack? = null,
     val playbackState: SyncedPlayback? = null,
-    val hasPermissions: Boolean = false
+    val hasPermissions: Boolean = false,
+    // New audio streaming states
+    val isCapturingAudio: Boolean = false,
+    val audioLevel: Float = 0f,
+    val streamingClients: Set<String> = emptySet()
 )
 
 class HostViewModel(application: Application) : AndroidViewModel(application) {
@@ -38,7 +44,11 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     private val networkManager = NetworkManager(application)
     private val audioStreamer = ExoPlayerAudioStreamer(application)
     private val permissionHandler = PermissionHandler(application)
-    private val deviceConfigManager = DeviceConfigManager(application) // Add this
+    private val deviceConfigManager = DeviceConfigManager(application)
+    
+    // New audio streaming components
+    private val audioCaptureManager = AudioCaptureManager()
+    private val audioStreamProtocol = AudioStreamProtocol()
     
     private var currentConnection: NetworkConnection? = null
     private var syncManager: SyncManager? = null
@@ -49,6 +59,40 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     init {
         checkPermissions()
         observePlaybackState()
+        initializeAudioStreaming()
+    }
+    
+    private fun initializeAudioStreaming() {
+        // Initialize audio capture manager
+        audioCaptureManager.initialize()
+        
+        // Observe audio streaming states
+        viewModelScope.launch {
+            audioCaptureManager.isCapturing.collectLatest { isCapturing ->
+                _uiState.value = _uiState.value.copy(isCapturingAudio = isCapturing)
+            }
+        }
+        
+        viewModelScope.launch {
+            audioCaptureManager.audioLevel.collectLatest { level ->
+                _uiState.value = _uiState.value.copy(audioLevel = level)
+            }
+        }
+        
+        viewModelScope.launch {
+            audioStreamProtocol.connectedClients.collectLatest { clients ->
+                _uiState.value = _uiState.value.copy(streamingClients = clients)
+            }
+        }
+        
+        // Set up audio stream protocol callbacks
+        audioStreamProtocol.setOnClientConnected { clientId ->
+            Log.d("HostViewModel", "Client connected for audio streaming: $clientId")
+        }
+        
+        audioStreamProtocol.setOnClientDisconnected { clientId ->
+            Log.d("HostViewModel", "Client disconnected from audio streaming: $clientId")
+        }
     }
     
     // Add this function to get device status
@@ -198,6 +242,58 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(selectedConnectionType = type)
     }
     
+    // New audio streaming functions
+    
+    /**
+     * Start capturing and streaming microphone audio
+     */
+    fun startAudioCapture() {
+        if (!_uiState.value.hasPermissions) {
+            Log.w("HostViewModel", "Cannot start audio capture - missing permissions")
+            return
+        }
+        
+        if (!_uiState.value.isHosting) {
+            Log.w("HostViewModel", "Cannot start audio capture - not hosting")
+            return
+        }
+        
+        // Start audio stream server
+        if (!audioStreamProtocol.startAsServer()) {
+            Log.e("HostViewModel", "Failed to start audio stream server")
+            return
+        }
+        
+        // Start audio capture with streaming callback
+        audioCaptureManager.startCapture { audioData ->
+            // Stream audio to all connected clients
+            audioStreamProtocol.broadcastAudioPacket(audioData)
+        }
+        
+        Log.d("HostViewModel", "Audio capture and streaming started")
+    }
+    
+    /**
+     * Stop audio capture and streaming
+     */
+    fun stopAudioCapture() {
+        audioCaptureManager.stopCapture()
+        audioStreamProtocol.stop()
+        Log.d("HostViewModel", "Audio capture and streaming stopped")
+    }
+    
+    /**
+     * Get current audio streaming statistics
+     */
+    fun getAudioStreamStats() = audioStreamProtocol.getNetworkStats()
+    
+    /**
+     * Get audio configuration info
+     */
+    fun getAudioConfig() = audioCaptureManager.getAudioConfig()
+    
+    // Existing functions
+    
     fun stopHosting() {
         viewModelScope.launch {
             networkManager.disconnect()
@@ -315,9 +411,16 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     
     override fun onCleared() {
         super.onCleared()
+        // Clean up audio streaming resources
+        audioCaptureManager.release()
+        audioStreamProtocol.stop()
+        
+        // Clean up existing resources
         audioStreamer.release()
         viewModelScope.launch {
             networkManager.disconnect()
         }
+        
+        Log.d("HostViewModel", "ViewModel cleared and resources released")
     }
 }
