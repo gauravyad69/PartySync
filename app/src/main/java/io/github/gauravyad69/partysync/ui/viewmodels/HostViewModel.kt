@@ -6,6 +6,9 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.gauravyad69.partysync.audio.AudioCaptureManager
 import io.github.gauravyad69.partysync.audio.AudioStreamProtocol
+import io.github.gauravyad69.partysync.audio.AudioStreamingConfig
+import io.github.gauravyad69.partysync.audio.AudioStreamingManager
+import io.github.gauravyad69.partysync.audio.AudioStreamingMode
 import io.github.gauravyad69.partysync.audio.AudioTrack
 import io.github.gauravyad69.partysync.audio.ExoPlayerAudioStreamer
 import io.github.gauravyad69.partysync.audio.SyncedPlayback
@@ -27,6 +30,7 @@ import kotlinx.coroutines.launch
 data class HostUiState(
     val roomName: String = "",
     val selectedConnectionType: ConnectionType = ConnectionType.Bluetooth,
+    val selectedStreamingMode: AudioStreamingMode = AudioStreamingMode.MICROPHONE,
     val connectionState: ConnectionState = ConnectionState.Disconnected,
     val isHosting: Boolean = false,
     val connectedDevices: List<String> = emptyList(),
@@ -36,7 +40,8 @@ data class HostUiState(
     // New audio streaming states
     val isCapturingAudio: Boolean = false,
     val audioLevel: Float = 0f,
-    val streamingClients: Set<String> = emptySet()
+    val streamingClients: Set<String> = emptySet(),
+    val canChangeMode: Boolean = true // Can change mode when not actively streaming
 )
 
 class HostViewModel(application: Application) : AndroidViewModel(application) {
@@ -48,6 +53,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     
     // New audio streaming components
     private val audioCaptureManager = AudioCaptureManager()
+    private val audioStreamingManager = AudioStreamingManager(application)
     private val audioStreamProtocol = AudioStreamProtocol()
     
     private var currentConnection: NetworkConnection? = null
@@ -242,10 +248,30 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(selectedConnectionType = type)
     }
     
+    fun updateStreamingMode(mode: AudioStreamingMode) {
+        if (!_uiState.value.canChangeMode) {
+            Log.w("HostViewModel", "Cannot change streaming mode while actively streaming")
+            return
+        }
+        
+        _uiState.value = _uiState.value.copy(selectedStreamingMode = mode)
+        
+        // Update recommended connection types for this mode
+        val recommendedConnections = mode.getRecommendedConnections()
+        if (_uiState.value.selectedConnectionType !in recommendedConnections && recommendedConnections.isNotEmpty()) {
+            // Auto-select the first recommended connection type
+            _uiState.value = _uiState.value.copy(selectedConnectionType = recommendedConnections.first())
+        }
+    }
+    
+    fun canChangeStreamingMode(): Boolean {
+        return _uiState.value.canChangeMode && !_uiState.value.isCapturingAudio
+    }
+    
     // New audio streaming functions
     
     /**
-     * Start capturing and streaming microphone audio
+     * Start capturing and streaming audio based on selected mode
      */
     fun startAudioCapture() {
         if (!_uiState.value.hasPermissions) {
@@ -258,27 +284,54 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         
+        if (_uiState.value.isCapturingAudio) {
+            Log.w("HostViewModel", "Audio capture already active")
+            return
+        }
+        
         // Start audio stream server
         if (!audioStreamProtocol.startAsServer()) {
             Log.e("HostViewModel", "Failed to start audio stream server")
             return
         }
         
-        // Start audio capture with streaming callback
-        audioCaptureManager.startCapture { audioData ->
-            // Stream audio to all connected clients
-            audioStreamProtocol.broadcastAudioPacket(audioData)
+        // Start streaming with the selected mode
+        val mode = _uiState.value.selectedStreamingMode
+        val config = AudioStreamingConfig(
+            mode = mode,
+            connectionType = _uiState.value.selectedConnectionType,
+            roomName = _uiState.value.roomName
+        )
+        
+        val success = audioStreamingManager.startHostStreaming(config)
+        if (!success) {
+            Log.e("HostViewModel", "Failed to start audio streaming")
+            return
         }
         
-        Log.d("HostViewModel", "Audio capture and streaming started")
+        // Update state - mode cannot be changed while streaming
+        _uiState.value = _uiState.value.copy(
+            isCapturingAudio = true,
+            canChangeMode = false
+        )
+        
+        Log.d("HostViewModel", "Audio capture and streaming started for mode: $mode")
     }
     
     /**
      * Stop audio capture and streaming
      */
     fun stopAudioCapture() {
-        audioCaptureManager.stopCapture()
+        audioStreamingManager.stopStreaming()
         audioStreamProtocol.stop()
+        
+        // Update state - mode can be changed again
+        _uiState.value = _uiState.value.copy(
+            isCapturingAudio = false,
+            canChangeMode = true,
+            audioLevel = 0f
+        )
+        
         Log.d("HostViewModel", "Audio capture and streaming stopped")
     }
     
@@ -332,6 +385,56 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     fun seekTo(position: Long) {
         viewModelScope.launch {
             syncManager?.sendSeekCommand(position)
+        }
+    }
+    
+    // New streaming mode specific functions
+    
+    /**
+     * Load and play audio file for synchronized playback (CUSTOM_PLAYER mode)
+     */
+    fun loadAndPlayAudioFile(filePath: String) {
+        if (_uiState.value.selectedStreamingMode != AudioStreamingMode.CUSTOM_PLAYER) {
+            Log.w("HostViewModel", "loadAndPlayAudioFile only available in CUSTOM_PLAYER mode")
+            return
+        }
+        
+        viewModelScope.launch {
+            // For now, we'll use the music track functionality
+            // This would need to be enhanced to support file loading
+            audioStreamingManager.playMusic()
+            
+            _uiState.value = _uiState.value.copy(
+                isCapturingAudio = true,
+                canChangeMode = false
+            )
+        }
+    }
+    
+    /**
+     * Pause synchronized playback
+     */
+    fun pausePlayback() {
+        if (_uiState.value.selectedStreamingMode == AudioStreamingMode.CUSTOM_PLAYER) {
+            audioStreamingManager.pauseMusic()
+        }
+    }
+    
+    /**
+     * Resume synchronized playback
+     */
+    fun resumePlayback() {
+        if (_uiState.value.selectedStreamingMode == AudioStreamingMode.CUSTOM_PLAYER) {
+            audioStreamingManager.playMusic()
+        }
+    }
+    
+    /**
+     * Seek to position in synchronized playback
+     */
+    fun seekToPosition(positionMs: Long) {
+        if (_uiState.value.selectedStreamingMode == AudioStreamingMode.CUSTOM_PLAYER) {
+            audioStreamingManager.seekTo(positionMs)
         }
     }
     

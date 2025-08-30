@@ -1,6 +1,7 @@
 package io.github.gauravyad69.partysync.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -8,12 +9,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bluetooth
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +29,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.github.gauravyad69.partysync.audio.AudioStreamingMode
 import io.github.gauravyad69.partysync.network.ConnectionState
 import io.github.gauravyad69.partysync.network.ConnectionType
 import io.github.gauravyad69.partysync.ui.viewmodels.HostViewModel
@@ -79,6 +84,7 @@ fun HostScreen(
                     ConnectionSetupScreen(
                         uiState = uiState,
                         onConnectionTypeSelected = viewModel::updateConnectionType,
+                        onStreamingModeSelected = viewModel::updateStreamingMode,
                         onRoomNameChanged = viewModel::updateRoomName,
                         onStartHosting = { viewModel.startHosting() }
                     )
@@ -116,6 +122,7 @@ fun HostScreen(
 private fun ConnectionSetupScreen(
     uiState: HostUiState,
     onConnectionTypeSelected: (ConnectionType) -> Unit,
+    onStreamingModeSelected: (AudioStreamingMode) -> Unit,
     onRoomNameChanged: (String) -> Unit,
     onStartHosting: () -> Unit
 ) {
@@ -222,6 +229,75 @@ private fun ConnectionSetupScreen(
                 isSelected = uiState.selectedConnectionType == ConnectionType.LocalHotspot,
                 onClick = { onConnectionTypeSelected(ConnectionType.LocalHotspot) }
             )
+        }
+    }
+    
+    // Streaming Mode Selection
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Audio Source",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Choose what audio to share with your party",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            StreamingModeCard(
+                mode = AudioStreamingMode.MICROPHONE,
+                icon = Icons.Default.Mic,
+                isSelected = uiState.selectedStreamingMode == AudioStreamingMode.MICROPHONE,
+                isEnabled = uiState.canChangeMode,
+                onClick = { onStreamingModeSelected(AudioStreamingMode.MICROPHONE) }
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            StreamingModeCard(
+                mode = AudioStreamingMode.SYSTEM_AUDIO,
+                icon = Icons.Default.PhoneAndroid,
+                isSelected = uiState.selectedStreamingMode == AudioStreamingMode.SYSTEM_AUDIO,
+                isEnabled = uiState.canChangeMode,
+                onClick = { onStreamingModeSelected(AudioStreamingMode.SYSTEM_AUDIO) }
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            StreamingModeCard(
+                mode = AudioStreamingMode.CUSTOM_PLAYER,
+                icon = Icons.Default.LibraryMusic,
+                isSelected = uiState.selectedStreamingMode == AudioStreamingMode.CUSTOM_PLAYER,
+                isEnabled = uiState.canChangeMode,
+                onClick = { onStreamingModeSelected(AudioStreamingMode.CUSTOM_PLAYER) }
+            )
+            
+            if (!uiState.canChangeMode) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Stop streaming to change audio source",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
     
@@ -503,11 +579,42 @@ private fun HostingScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Audio Streaming",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
+                Column {
+                    Text(
+                        text = "Audio Source",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = when (uiState.selectedStreamingMode) {
+                                AudioStreamingMode.MICROPHONE -> Icons.Default.Mic
+                                AudioStreamingMode.SYSTEM_AUDIO -> Icons.Default.PhoneAndroid
+                                AudioStreamingMode.CUSTOM_PLAYER -> Icons.Default.LibraryMusic
+                            },
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = uiState.selectedStreamingMode.displayName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (!uiState.canChangeMode) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
                 
                 // Audio capture toggle button
                 Button(
@@ -537,28 +644,72 @@ private fun HostingScreen(
             if (uiState.isCapturingAudio) {
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // Audio level indicator
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Audio Level:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(80.dp)
-                    )
-                    LinearProgressIndicator(
-                        progress = { uiState.audioLevel },
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(8.dp),
-                        color = if (uiState.audioLevel > 0.1f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-                    )
-                    Text(
-                        text = "${(uiState.audioLevel * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
+                when (uiState.selectedStreamingMode) {
+                    AudioStreamingMode.MICROPHONE, AudioStreamingMode.SYSTEM_AUDIO -> {
+                        // Audio level indicator for live audio
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Audio Level:",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.width(80.dp)
+                            )
+                            LinearProgressIndicator(
+                                progress = { uiState.audioLevel },
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(8.dp),
+                                color = if (uiState.audioLevel > 0.1f) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
+                            )
+                            Text(
+                                text = "${(uiState.audioLevel * 100).toInt()}%",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+                    }
+                    AudioStreamingMode.CUSTOM_PLAYER -> {
+                        // Music player controls
+                        Column {
+                            Text(
+                                text = "Music Player Controls",
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedButton(
+                                    onClick = { /* TODO: Open file picker */ },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.LibraryMusic,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Load Music")
+                                }
+                                
+                                IconButton(
+                                    onClick = { viewModel.pausePlayback() }
+                                ) {
+                                    Icon(Icons.Default.MusicNote, contentDescription = "Pause")
+                                }
+                                
+                                IconButton(
+                                    onClick = { viewModel.resumePlayback() }
+                                ) {
+                                    Icon(Icons.Default.MusicNote, contentDescription = "Play")
+                                }
+                            }
+                        }
+                    }
                 }
             }
             
@@ -649,6 +800,89 @@ private fun ErrorScreen(
                 ) {
                     Text("Retry")
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StreamingModeCard(
+    mode: AudioStreamingMode,
+    icon: ImageVector,
+    isSelected: Boolean,
+    isEnabled: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        enabled = isEnabled,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surface
+            }
+        ),
+        border = if (isSelected) {
+            BorderStroke(2.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            null
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(32.dp),
+                tint = if (isSelected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Text(
+                    text = mode.displayName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
+                
+                Text(
+                    text = mode.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 2
+                )
+            }
+            
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
             }
         }
     }

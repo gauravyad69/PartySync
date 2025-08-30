@@ -325,7 +325,8 @@ class CustomPlayerManager(private val context: Context) {
             position = _currentPosition.value,
             duration = _duration.value,
             track = _currentTrack.value,
-            volume = _volume.value
+            volume = _volume.value,
+            syncTimestamp = System.currentTimeMillis()
         )
     }
     
@@ -351,26 +352,3 @@ class CustomPlayerManager(private val context: Context) {
         playerScope.cancel()
     }
 }
-
-/**
- * Music track data class
- */
-data class MusicTrack(
-    val id: String,
-    val title: String,
-    val artist: String,
-    val album: String,
-    val duration: Long,
-    val filePath: String
-)
-
-/**
- * Playback synchronization state
- */
-data class PlaybackSyncState(
-    val isPlaying: Boolean,
-    val position: Long,
-    val duration: Long,
-    val track: MusicTrack?,
-    val volume: Float
-)
