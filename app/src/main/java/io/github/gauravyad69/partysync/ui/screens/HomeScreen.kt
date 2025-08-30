@@ -34,6 +34,7 @@ fun HomeScreen(
                 )
             )
             .verticalScroll(rememberScrollState())
+            .windowInsetsPadding(WindowInsets.systemBars)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

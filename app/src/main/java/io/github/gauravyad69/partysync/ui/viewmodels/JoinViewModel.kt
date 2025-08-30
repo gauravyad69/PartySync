@@ -154,26 +154,6 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
         checkPermissions()
     }
     
-    fun disconnect() {
-        viewModelScope.launch {
-            try {
-                syncManager = null
-                currentConnection?.disconnect()
-                currentConnection = null
-                
-                _uiState.value = _uiState.value.copy(
-                    isConnected = false,
-                    connectedHostName = "",
-                    connectionState = ConnectionState.Disconnected
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    connectionState = ConnectionState.Error("Disconnect failed: ${e.message}")
-                )
-            }
-        }
-    }
-    
     override fun onCleared() {
         super.onCleared()
         audioStreamer.release()

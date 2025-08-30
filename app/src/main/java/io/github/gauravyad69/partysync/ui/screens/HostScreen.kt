@@ -1,26 +1,34 @@
 package io.github.gauravyad69.partysync.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bluetooth
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import compose.icons.Octicons
-import compose.icons.octicons.*
-import io.github.gauravyad69.partysync.audio.AudioTrack
 import io.github.gauravyad69.partysync.network.ConnectionState
 import io.github.gauravyad69.partysync.network.ConnectionType
-import io.github.gauravyad69.partysync.ui.screens.components.*
 import io.github.gauravyad69.partysync.ui.viewmodels.HostViewModel
-import io.github.gauravyad69.partysync.utils.PermissionHandler
-import io.github.gauravyad69.partysync.utils.RequestPermissions
+import io.github.gauravyad69.partysync.ui.viewmodels.HostUiState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,132 +36,75 @@ fun HostScreen(
     onBack: () -> Unit,
     viewModel: HostViewModel = viewModel()
 ) {
-    val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsState()
-    val permissionHandler = remember { PermissionHandler(context) }
     
-    var showPermissionDialog by remember { mutableStateOf(false) }
-    
-    val sampleTracks = remember {
-        listOf(
-            AudioTrack(
-                id = "test_music",
-                title = "Test Music",
-                artist = "Demo Artist",
-                uri = "android.resource://io.github.gauravyad69.partysync/raw/test_music",
-                duration = 180000L
-            )
-        )
-    }
-    
-    LaunchedEffect(Unit) {
-        if (!uiState.hasPermissions) {
-            showPermissionDialog = true
-        }
-    }
-    
-    if (showPermissionDialog) {
-        RequestPermissions(
-            permissionHandler = permissionHandler
-        ) { granted ->
-            viewModel.onPermissionsResult(granted)
-            showPermissionDialog = false
-        }
-    }
-    
-    Column(modifier = Modifier.fillMaxSize()) {
-        TopAppBar(
-            title = { Text("Host Party") },
-            navigationIcon = {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                }
-            },
-            actions = {
-                if (uiState.isHosting) {
-                    IconButton(onClick = { viewModel.stopHosting() }) {
-                        Icon(Octicons.X24, contentDescription = "Stop Hosting")
-                    }
-                }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .windowInsetsPadding(WindowInsets.systemBars)
+    ) {
+        // Custom App Bar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
             }
-        )
+            Text(
+                text = "Host Audio",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
         
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Debug info card
-            item {
-                DebugInfoCard(
-                    uiState = uiState,
-                    onRequestPermissions = { showPermissionDialog = true },
-                    onRefreshPermissions = { viewModel.refreshPermissions() }
-                )
-            }
-            
-            // Device status card
-            item {
-                val deviceStatus = viewModel.getDeviceStatus()
-                DeviceStatusCard(
-                    deviceStatus = deviceStatus,
-                    selectedConnectionType = uiState.selectedConnectionType,
-                    connectionState = uiState.connectionState,
-                    onPrepareDevice = { viewModel.prepareDevice() }
-                )
-            }
-            
-            if (!uiState.isHosting) {
-                // Room configuration
-                item {
-                    RoomConfigurationSection(
-                        roomName = uiState.roomName,
-                        onRoomNameChange = viewModel::updateRoomName,
-                        selectedConnectionType = uiState.selectedConnectionType,
-                        onConnectionTypeChange = viewModel::updateConnectionType
-                    )
-                }
-                
-                // Start party button
-                item {
-                    StartPartySection(
+            when (uiState.connectionState) {
+                is ConnectionState.Disconnected -> {
+                    ConnectionSetupScreen(
                         uiState = uiState,
-                        onStartHosting = { viewModel.startHosting() },
+                        onConnectionTypeSelected = viewModel::updateConnectionType,
+                        onRoomNameChanged = viewModel::updateRoomName,
+                        onStartHosting = { viewModel.startHosting() }
+                    )
+                }
+                is ConnectionState.Connecting -> {
+                    ConnectingScreen(
+                        uiState = uiState,
+                        onCancel = viewModel::stopHosting
+                    )
+                }
+                is ConnectionState.Connected -> {
+                    HostingScreen(
+                        uiState = uiState,
+                        onStopHosting = viewModel::stopHosting,
+                        onPlayMusic = viewModel::playMusic,
+                        onPauseMusic = viewModel::pauseMusic,
+                        onSeek = viewModel::seekTo
+                    )
+                }
+                is ConnectionState.Error -> {
+                    ErrorScreen(
+                        uiState = uiState,
                         onRetry = { viewModel.startHosting() },
-                        onResetWiFi = { viewModel.resetWiFiDirectState() },
-                        onSwitchToHotspot = { viewModel.switchToLocalHotspot() },
-                        onSwitchToWiFiDirect = { viewModel.updateConnectionType(ConnectionType.WiFiDirect) },
-                        onRetryWithReset = { viewModel.retryWithWiFiReset() }
+                        onTryDifferentConnection = viewModel::updateConnectionType,
+                        onBack = onBack
                     )
-                }
-            } else {
-                // Party status and music controls
-                item {
-                    PartyStatusCard(uiState = uiState)
-                }
-                
-                item {
-                    MusicLibraryHeader()
-                }
-                
-                items(sampleTracks) { track ->
-                    TrackItem(
-                        track = track,
-                        isSelected = uiState.currentTrack?.id == track.id,
-                        onTrackSelect = { viewModel.loadTrack(track) }
-                    )
-                }
-                
-                uiState.currentTrack?.let { track ->
-                    item {
-                        MusicControlCard(
-                            currentTrack = track,
-                            playbackState = uiState.playbackState,
-                            onPlay = { viewModel.playMusic() },
-                            onPause = { viewModel.pauseMusic() }
-                        )
-                    }
                 }
             }
         }
@@ -161,187 +112,258 @@ fun HostScreen(
 }
 
 @Composable
-private fun RoomConfigurationSection(
-    roomName: String,
-    onRoomNameChange: (String) -> Unit,
-    selectedConnectionType: ConnectionType,
-    onConnectionTypeChange: (ConnectionType) -> Unit
+private fun ConnectionSetupScreen(
+    uiState: HostUiState,
+    onConnectionTypeSelected: (ConnectionType) -> Unit,
+    onRoomNameChanged: (String) -> Unit,
+    onStartHosting: () -> Unit
 ) {
-    Column {
-        OutlinedTextField(
-            value = roomName,
-            onValueChange = onRoomNameChange,
-            label = { Text("Room Name") },
-            placeholder = { Text("Enter party name...") },
-            leadingIcon = {
-                Icon(
-                    Octicons.Home24,
-                    contentDescription = "Room",
-                    modifier = Modifier.size(20.dp)
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text("Connection Type:", style = MaterialTheme.typography.titleMedium)
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            FilterChip(
-                onClick = { onConnectionTypeChange(ConnectionType.Bluetooth) },
-                label = { Text("Bluetooth") },
-                selected = selectedConnectionType == ConnectionType.Bluetooth,
-                leadingIcon = if (selectedConnectionType == ConnectionType.Bluetooth) {
-                    {
-                        Icon(
-                            Octicons.DeviceMobile24,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null
-            )
-            
-            FilterChip(
-                onClick = { onConnectionTypeChange(ConnectionType.WiFiDirect) },
-                label = { Text("WiFi Direct") },
-                selected = selectedConnectionType == ConnectionType.WiFiDirect,
-                leadingIcon = if (selectedConnectionType == ConnectionType.WiFiDirect) {
-                    {
-                        Icon(
-                            Octicons.Broadcast24,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null
-            )
-            
-            FilterChip(
-                onClick = { onConnectionTypeChange(ConnectionType.LocalHotspot) },
-                label = { Text("Local Hotspot") },
-                selected = selectedConnectionType == ConnectionType.LocalHotspot,
-                leadingIcon = if (selectedConnectionType == ConnectionType.LocalHotspot) {
-                    {
-                        Icon(
-                            Octicons.Server24,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                } else null
-            )
-        }
-    }
-}
-
-@Composable
-private fun StartPartySection(
-    uiState: io.github.gauravyad69.partysync.ui.viewmodels.HostUiState,
-    onStartHosting: () -> Unit,
-    onRetry: () -> Unit,
-    onResetWiFi: () -> Unit,
-    onSwitchToHotspot: () -> Unit,
-    onSwitchToWiFiDirect: () -> Unit,
-    onRetryWithReset: () -> Unit
-) {
-    val buttonEnabled = uiState.hasPermissions && uiState.connectionState != ConnectionState.Connecting
-    
-    Button(
-        onClick = onStartHosting,
+    // Welcome Section
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        enabled = buttonEnabled
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        )
     ) {
-        when (uiState.connectionState) {
-            ConnectionState.Connecting -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(16.dp),
-                    strokeWidth = 2.dp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Connecting...")
-            }
-            else -> {
-                Icon(
-                    Octicons.Play24,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Start Party")
-            }
-        }
-    }
-    
-    // Show connection error
-    when (val state = uiState.connectionState) {
-        is ConnectionState.Error -> {
-            Spacer(modifier = Modifier.height(8.dp))
-            ConnectionErrorCard(
-                error = state,
-                selectedConnectionType = uiState.selectedConnectionType,
-                onRetry = onRetry,
-                onResetWiFi = onResetWiFi,
-                onSwitchToHotspot = onSwitchToHotspot,
-                onSwitchToWiFiDirect = onSwitchToWiFiDirect,
-                onRetryWithReset = onRetryWithReset
-            )
-        }
-        else -> {
-            if (!buttonEnabled) {
-                Spacer(modifier = Modifier.height(8.dp))
-                ButtonStatusIndicator(uiState)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ButtonStatusIndicator(uiState: io.github.gauravyad69.partysync.ui.viewmodels.HostUiState) {
-    val buttonEnabled = uiState.hasPermissions && uiState.connectionState != ConnectionState.Connecting
-    
-    Text(
-        text = "Button enabled: $buttonEnabled (permissions: ${uiState.hasPermissions}, state: ${uiState.connectionState})",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-    
-    if (!buttonEnabled) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                when {
-                    !uiState.hasPermissions -> Octicons.Shield24
-                    uiState.connectionState == ConnectionState.Connecting -> Octicons.Clock24
-                    else -> Octicons.Question24
-                },
+                imageVector = Icons.Default.MusicNote,
                 contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.error
+                modifier = Modifier.size(48.dp),
+                tint = MaterialTheme.colorScheme.primary
             )
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = when {
-                    !uiState.hasPermissions -> "Missing permissions"
-                    uiState.connectionState == ConnectionState.Connecting -> "Currently connecting"
-                    else -> "Unknown reason"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error
+                text = "Share Your Audio",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
             )
+            Text(
+                text = "Create a party and let others join to hear your music",
+                style = MaterialTheme.typography.bodyMedium,
+                textAlign = TextAlign.Center,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+    
+    // Room Name Input
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Party Name",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedTextField(
+                value = uiState.roomName,
+                onValueChange = onRoomNameChanged,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("Enter a fun party name...") },
+                singleLine = true
+            )
+        }
+    }
+    
+    // Connection Type Selection
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp)
+        ) {
+            Text(
+                text = "Connection Method",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            ConnectionTypeCard(
+                type = ConnectionType.Bluetooth,
+                icon = Icons.Default.Bluetooth,
+                title = "Bluetooth",
+                subtitle = "Reliable • 30m range • Works everywhere",
+                description = "Best for small groups and outdoor events",
+                isSelected = uiState.selectedConnectionType == ConnectionType.Bluetooth,
+                isRecommended = true,
+                onClick = { onConnectionTypeSelected(ConnectionType.Bluetooth) }
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            ConnectionTypeCard(
+                type = ConnectionType.WiFiDirect,
+                icon = Icons.Default.Wifi,
+                title = "WiFi Direct",
+                subtitle = "High Quality • 100m range • Device-to-device",
+                description = "Better audio quality, longer range",
+                isSelected = uiState.selectedConnectionType == ConnectionType.WiFiDirect,
+                onClick = { onConnectionTypeSelected(ConnectionType.WiFiDirect) }
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            ConnectionTypeCard(
+                type = ConnectionType.LocalHotspot,
+                icon = Icons.Default.Wifi,
+                title = "WiFi Hotspot",
+                subtitle = "Network mode • Multiple devices",
+                description = "For devices on same WiFi network",
+                isSelected = uiState.selectedConnectionType == ConnectionType.LocalHotspot,
+                onClick = { onConnectionTypeSelected(ConnectionType.LocalHotspot) }
+            )
+        }
+    }
+    
+    // Device Status - simplified for now
+    // TODO: Add device status checking back once DeviceStatus is properly integrated
+    // if (!uiState.deviceStatus.isOptimal(uiState.selectedConnectionType)) {
+    //     DeviceStatusWarning(
+    //         connectionType = uiState.selectedConnectionType
+    //     )
+    // }
+    
+        // Start Button
+    Button(
+        onClick = onStartHosting,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        enabled = uiState.roomName.isNotBlank()
+    ) {
+            Icon(
+                imageVector = Icons.Default.Share,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp)
+            )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "Start Hosting",
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun ConnectionTypeCard(
+    type: ConnectionType,
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    description: String,
+    isSelected: Boolean,
+    isRecommended: Boolean = false,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.surface
+        ),
+        border = if (isSelected) 
+            null 
+        else 
+            CardDefaults.outlinedCardBorder()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (isSelected) 
+                    MaterialTheme.colorScheme.primary 
+                else 
+                    MaterialTheme.colorScheme.surfaceVariant,
+                modifier = Modifier.size(48.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = title,
+                        modifier = Modifier.size(24.dp),
+                        tint = if (isSelected) 
+                            MaterialTheme.colorScheme.onPrimary 
+                        else 
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    if (isRecommended) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.tertiary
+                        ) {
+                            Text(
+                                text = "RECOMMENDED",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onTertiary,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.CheckCircle,
+                    contentDescription = "Selected",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun PartyStatusCard(uiState: io.github.gauravyad69.partysync.ui.viewmodels.HostUiState) {
+private fun DeviceStatusWarning(
+    connectionType: ConnectionType
+) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        )
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -350,121 +372,181 @@ private fun PartyStatusCard(uiState: io.github.gauravyad69.partysync.ui.viewmode
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Octicons.People24,
-                    contentDescription = "Party",
-                    modifier = Modifier.size(24.dp),
-                    tint = MaterialTheme.colorScheme.primary
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    "Party Status",
-                    style = MaterialTheme.typography.titleMedium
+                    text = "Device Setup Needed",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error
                 )
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Row(
-                verticalAlignment = Alignment.CenterVertically
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = when (connectionType) {
+                    ConnectionType.Bluetooth -> "Please enable Bluetooth in your device settings"
+                    ConnectionType.WiFiDirect -> "WiFi should be enabled for best performance"
+                    ConnectionType.LocalHotspot -> "Disconnect from WiFi networks for hotspot mode"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onErrorContainer
+            )
+        }
+    }
+}
+
+// We'll implement the other screen composables (ConnectingScreen, HostingScreen, ErrorScreen) 
+// in the next steps to keep this manageable
+
+@Composable
+private fun ConnectingScreen(
+    uiState: HostUiState,
+    onCancel: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(64.dp)
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "Starting ${uiState.selectedConnectionType.displayName}...",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = "Setting up your audio sharing session",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            OutlinedButton(
+                onClick = onCancel
             ) {
-                val (statusIcon, statusColor) = when (uiState.connectionState) {
-                    ConnectionState.Connected -> Octicons.CheckCircle24 to MaterialTheme.colorScheme.primary
-                    ConnectionState.Connecting -> Octicons.Clock24 to MaterialTheme.colorScheme.secondary
-                    else -> Octicons.XCircle24 to MaterialTheme.colorScheme.error
-                }
-                
-                Icon(
-                    statusIcon,
-                    contentDescription = "Status",
-                    tint = statusColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    when (uiState.connectionState) {
-                        ConnectionState.Connected -> "Connected"
-                        ConnectionState.Connecting -> "Connecting..."
-                        ConnectionState.Disconnected -> "Disconnected"
-                        is ConnectionState.Error -> "Error: ${(uiState.connectionState as ConnectionState.Error).message}"
-                    }
-                )
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Room: ${uiState.roomName.ifEmpty { "Default Room" }}")
-            Text("Connection: ${uiState.selectedConnectionType.displayName}")
-            
-            if (uiState.connectedDevices.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        Octicons.DeviceMobile24,
-                        contentDescription = "Devices",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Connected devices: ${uiState.connectedDevices.size}")
-                }
+                Text("Cancel")
             }
         }
     }
 }
 
 @Composable
-private fun MusicLibraryHeader() {
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            Octicons.Note24,
-            contentDescription = "Music",
-            modifier = Modifier.size(20.dp)
+private fun HostingScreen(
+    uiState: HostUiState,
+    onStopHosting: () -> Unit,
+    onPlayMusic: () -> Unit,
+    onPauseMusic: () -> Unit,
+    onSeek: (Long) -> Unit
+) {
+    // Success state - show hosting controls
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text("Music Library", style = MaterialTheme.typography.titleMedium)
+    ) {
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.Groups,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "🎉 ${uiState.roomName}",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Your audio is now being shared!",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Others can join using ${uiState.selectedConnectionType.displayName}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+        }
+    }
+    
+    Spacer(modifier = Modifier.height(16.dp))
+    
+    // Stop Hosting Button
+    Button(
+        onClick = onStopHosting,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(48.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.error
+        )
+    ) {
+        Text("Stop Hosting", color = MaterialTheme.colorScheme.onError)
     }
 }
 
 @Composable
-private fun TrackItem(
-    track: AudioTrack,
-    isSelected: Boolean,
-    onTrackSelect: () -> Unit
+private fun ErrorScreen(
+    uiState: HostUiState,
+    onRetry: () -> Unit,
+    onTryDifferentConnection: (ConnectionType) -> Unit,
+    onBack: () -> Unit
 ) {
     Card(
-        onClick = onTrackSelect,
-        modifier = Modifier.fillMaxWidth()
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+        )
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                Octicons.FileMedia24,
-                contentDescription = "Track",
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            Text(
+                text = "Connection Failed",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
             )
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = (uiState.connectionState as ConnectionState.Error).message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                textAlign = TextAlign.Center
+            )
             
-            Column(modifier = Modifier.weight(1f)) {
-                Text(track.title, style = MaterialTheme.typography.titleSmall)
-                Text(track.artist, style = MaterialTheme.typography.bodySmall)
-                Text(
-                    "Duration: ${track.duration / 1000}s",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            Spacer(modifier = Modifier.height(24.dp))
             
-            if (isSelected) {
-                Icon(
-                    Octicons.Check24,
-                    contentDescription = "Currently selected",
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp)
-                )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onBack,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Back")
+                }
+                Button(
+                    onClick = onRetry,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Retry")
+                }
             }
         }
     }
