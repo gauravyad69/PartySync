@@ -30,7 +30,7 @@ import kotlinx.coroutines.launch
 
 data class HostUiState(
     val roomName: String = "",
-    val selectedConnectionType: ConnectionType = ConnectionType.Bluetooth,
+    val selectedConnectionType: ConnectionType = ConnectionType.WiFiDirect,
     val selectedStreamingMode: AudioStreamingMode = AudioStreamingMode.MICROPHONE,
     val connectionState: ConnectionState = ConnectionState.Disconnected,
     val isHosting: Boolean = false,
@@ -49,7 +49,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     
     private val networkManager = NetworkManager(application)
     private val audioStreamer = ExoPlayerAudioStreamer(application)
-    private val permissionHandler = PermissionHandler(application)
+    val permissionHandler = PermissionHandler(application)
     private val deviceConfigManager = DeviceConfigManager(application)
     
     // New audio streaming components
@@ -377,8 +377,11 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
      * Start capturing and streaming audio based on selected mode
      */
     fun startAudioCapture() {
-        if (!_uiState.value.hasPermissions) {
+        // Recheck permissions in real-time
+        val hasPermissions = permissionHandler.hasAllPermissions()
+        if (!hasPermissions) {
             Log.w("HostViewModel", "Cannot start audio capture - missing permissions")
+            checkPermissions() // Update UI state
             return
         }
         

@@ -32,6 +32,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.gauravyad69.partysync.audio.AudioStreamingMode
 import io.github.gauravyad69.partysync.network.ConnectionState
 import io.github.gauravyad69.partysync.network.ConnectionType
+import io.github.gauravyad69.partysync.ui.components.RequestPermissions
 import io.github.gauravyad69.partysync.ui.viewmodels.HostViewModel
 import io.github.gauravyad69.partysync.ui.viewmodels.HostUiState
 
@@ -42,6 +43,11 @@ fun HostScreen(
     viewModel: HostViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Handle permission requests
+    RequestPermissions(
+        permissionHandler = viewModel.permissionHandler
+    )
     
     Column(
         modifier = Modifier

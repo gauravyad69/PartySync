@@ -6,9 +6,16 @@ import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
 import androidx.annotation.RequiresPermission
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlin.math.pow
 import kotlin.math.sqrt
 
@@ -94,6 +101,7 @@ class MicrophoneAudioManager {
     /**
      * Start capturing microphone audio
      */
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startCapture(onAudioData: (ByteArray) -> Unit) {
         if (_isCapturing.value) {
             Log.w(tag, "Microphone capture already running")

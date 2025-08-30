@@ -71,11 +71,11 @@ fun JoinScreen(
     viewModel: JoinViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var selectedConnectionType by remember { mutableStateOf(ConnectionType.Bluetooth) }
+    var selectedConnectionType by remember { mutableStateOf(ConnectionType.WiFiDirect) }
 
-    // Auto-start scanning with Bluetooth when screen opens
+    // Auto-start scanning with WiFi Direct when screen opens
     LaunchedEffect(Unit) {
-        viewModel.startScanning(ConnectionType.Bluetooth)
+        viewModel.startScanning(ConnectionType.WiFiDirect)
     }
 
     Column(

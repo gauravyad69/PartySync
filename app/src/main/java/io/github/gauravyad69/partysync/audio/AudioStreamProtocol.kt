@@ -112,6 +112,40 @@ class AudioStreamProtocol {
     }
     
     /**
+     * Register client with server by sending a connection packet
+     */
+    fun registerWithServer(serverAddress: InetSocketAddress) {
+        if (!isRunning || serverSocket == null) {
+            Log.w(tag, "Cannot register - client not running")
+            return
+        }
+        
+        try {
+            // Send a small registration packet to the server
+            val registrationData = ByteArray(4) // Empty registration packet
+            val packet = AudioPacket(
+                sequenceNumber = 0, // Special sequence for registration
+                timestamp = System.currentTimeMillis(),
+                audioData = registrationData
+            )
+            
+            val packetBytes = packet.toBytes()
+            val datagramPacket = DatagramPacket(
+                packetBytes,
+                packetBytes.size,
+                serverAddress.address,
+                serverAddress.port
+            )
+            
+            serverSocket?.send(datagramPacket)
+            Log.d(tag, "Registered with server at $serverAddress")
+            
+        } catch (e: Exception) {
+            Log.e(tag, "Failed to register with server", e)
+        }
+    }
+    
+    /**
      * Send audio packet to all connected clients (server mode)
      */
     fun broadcastAudioPacket(audioData: ByteArray) {

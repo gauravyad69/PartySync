@@ -22,6 +22,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 
 data class JoinUiState(
@@ -114,7 +116,7 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Start receiving and playing audio stream from host
      */
-    fun startAudioPlayback(hostAddress: String, port: Int = 8888) {
+    fun startAudioPlayback(hostAddress: String, port: Int = 8889) {
         if (!_uiState.value.hasPermissions) {
             Log.w("JoinViewModel", "Cannot start audio playback - missing permissions")
             return
@@ -125,22 +127,37 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
         
-        try {
-            // Parse host address
-            hostAudioAddress = InetSocketAddress(hostAddress, port)
-            
-            // Start audio stream client
-            if (!audioStreamProtocol.startAsClient()) {
-                Log.e("JoinViewModel", "Failed to start audio stream client")
-                return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // Parse host address on background thread
+                hostAudioAddress = InetSocketAddress(hostAddress, port)
+                
+                // Start audio stream client
+                if (!audioStreamProtocol.startAsClient()) {
+                    Log.e("JoinViewModel", "Failed to start audio stream client")
+                    return@launch
+                }
+                
+                // Register with the server
+                audioStreamProtocol.registerWithServer(hostAudioAddress!!)
+                
+                // Set up packet reception
+                audioStreamProtocol.setOnAudioPacketReceived { packet, _ ->
+                    audioPlaybackManager.addAudioPacket(packet)
+                }
+                
+                // Start audio playback
+                audioPlaybackManager.startPlayback()
+                
+                Log.d("JoinViewModel", "Audio playback started for host: $hostAddress:$port")
+                
+                // Update UI state
+                withContext(Dispatchers.Main) {
+                    _uiState.value = _uiState.value.copy(isPlayingAudio = true)
+                }
+            } catch (e: Exception) {
+                Log.e("JoinViewModel", "Failed to start audio playback", e)
             }
-            
-            // Start audio playback
-            audioPlaybackManager.startPlayback()
-            
-            Log.d("JoinViewModel", "Audio playback started for host: $hostAddress:$port")
-        } catch (e: Exception) {
-            Log.e("JoinViewModel", "Failed to start audio playback", e)
         }
     }
     
