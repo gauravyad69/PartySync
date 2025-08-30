@@ -66,6 +66,75 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         checkPermissions()
         observePlaybackState()
         initializeAudioStreaming()
+        checkForExistingConnections()
+    }
+    
+    /**
+     * Check if there are existing active connections from previous sessions
+     */
+    private fun checkForExistingConnections() {
+        viewModelScope.launch {
+            try {
+                Log.d("HostViewModel", "Checking for existing connections...")
+                
+                // Check if NetworkManager has any active connections
+                val hasActiveConnection = networkManager.hasActiveConnection()
+                if (hasActiveConnection) {
+                    Log.w("HostViewModel", "Found existing active connection - cleaning up...")
+                    cleanupAllConnections()
+                }
+                
+                // Check if audio stream server is already running
+                val isAudioServerActive = audioStreamProtocol.isServerRunning()
+                if (isAudioServerActive) {
+                    Log.w("HostViewModel", "Found existing audio server - stopping...")
+                    audioStreamProtocol.stop()
+                }
+                
+                // Check if any streaming managers are active
+                if (audioStreamingManager.isStreaming()) {
+                    Log.w("HostViewModel", "Found existing audio streaming - stopping...")
+                    audioStreamingManager.stopStreaming()
+                }
+                
+                Log.d("HostViewModel", "Connection cleanup completed")
+                
+            } catch (e: Exception) {
+                Log.e("HostViewModel", "Error during connection cleanup", e)
+            }
+        }
+    }
+    
+    /**
+     * Clean up all connections and streaming
+     */
+    private fun cleanupAllConnections() {
+        try {
+            // Stop audio streaming first
+            audioStreamingManager.stopStreaming()
+            audioStreamProtocol.stop()
+            
+            // Disconnect network connections
+            networkManager.disconnect()
+            
+            // Reset local state
+            currentConnection = null
+            syncManager = null
+            
+            _uiState.value = _uiState.value.copy(
+                isHosting = false,
+                connectionState = ConnectionState.Disconnected,
+                connectedDevices = emptyList(),
+                isCapturingAudio = false,
+                canChangeMode = true,
+                audioLevel = 0f,
+                streamingClients = emptySet()
+            )
+            
+            Log.d("HostViewModel", "All connections cleaned up successfully")
+        } catch (e: Exception) {
+            Log.e("HostViewModel", "Error during cleanup", e)
+        }
     }
     
     private fun initializeAudioStreaming() {
@@ -119,6 +188,11 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                
+                // Step 0: Clean up any existing connections first
+                Log.d("HostViewModel", "Cleaning up existing connections before starting...")
+                cleanupAllConnections()
+                delay(500) // Give cleanup time to complete
                 
                 // Step 1: Prepare device for the selected connection type
                 val preparationResult = when (_uiState.value.selectedConnectionType) {
@@ -348,16 +422,9 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     // Existing functions
     
     fun stopHosting() {
+        Log.d("HostViewModel", "Stopping hosting...")
         viewModelScope.launch {
-            networkManager.disconnect()
-            currentConnection = null
-            syncManager = null
-            
-            _uiState.value = _uiState.value.copy(
-                isHosting = false,
-                connectionState = ConnectionState.Disconnected,
-                connectedDevices = emptyList()
-            )
+            cleanupAllConnections()
         }
     }
     

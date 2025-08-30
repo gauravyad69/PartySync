@@ -118,6 +118,13 @@ class AudioStreamingManager(private val context: Context) {
     }
     
     /**
+     * Check if currently streaming
+     */
+    fun isStreaming(): Boolean {
+        return _isStreaming.value
+    }
+    
+    /**
      * Stop all streaming
      */
     fun stopStreaming() {

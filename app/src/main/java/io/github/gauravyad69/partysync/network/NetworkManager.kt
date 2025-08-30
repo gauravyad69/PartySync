@@ -22,6 +22,15 @@ class NetworkManager(private val context: Context) {
     
     fun getCurrentConnection(): NetworkConnection? = currentConnection
     
+    fun hasActiveConnection(): Boolean {
+        return currentConnection?.let { connection ->
+            when (connection.getConnectionState()) {
+                is ConnectionState.Connected, is ConnectionState.Connecting -> true
+                else -> false
+            }
+        } ?: false
+    }
+    
     suspend fun disconnect() {
         currentConnection?.disconnect()
         currentConnection = null

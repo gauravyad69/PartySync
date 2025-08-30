@@ -17,7 +17,7 @@ class AudioStreamProtocol {
     
     // Network configuration
     companion object {
-        const val DEFAULT_AUDIO_PORT = 8888
+        const val DEFAULT_AUDIO_PORT = 8889  // Different port to avoid conflict with WiFi Direct
         const val MULTICAST_ADDRESS = "224.0.0.251" // mDNS multicast address
         const val MAX_CLIENTS = 16
         const val PACKET_TIMEOUT_MS = 5000L
@@ -336,6 +336,13 @@ class AudioStreamProtocol {
      */
     fun getNetworkStats(): Map<String, AudioPacketStats> {
         return packetStats.toMap()
+    }
+    
+    /**
+     * Check if the audio stream server is currently running
+     */
+    fun isServerRunning(): Boolean {
+        return isRunning && serverSocket != null && !serverSocket!!.isClosed
     }
     
     /**
