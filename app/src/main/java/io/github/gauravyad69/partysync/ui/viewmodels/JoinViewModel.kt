@@ -14,6 +14,7 @@ import io.github.gauravyad69.partysync.network.ConnectionType
 import io.github.gauravyad69.partysync.network.NetworkConnection
 import io.github.gauravyad69.partysync.network.NetworkDevice
 import io.github.gauravyad69.partysync.network.NetworkManager
+import io.github.gauravyad69.partysync.session.SessionManager
 import io.github.gauravyad69.partysync.sync.SyncManager
 import io.github.gauravyad69.partysync.utils.PermissionHandler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -48,9 +49,13 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
     private val audioPlaybackManager = AudioPlaybackManager()
     private val audioStreamProtocol = AudioStreamProtocol()
     
+    // Session management
+    private val sessionManager = SessionManager(application)
+    
     private var currentConnection: NetworkConnection? = null
     private var syncManager: SyncManager? = null
     private var hostAudioAddress: InetSocketAddress? = null
+    private var currentConnectionType: ConnectionType = ConnectionType.WiFiDirect
     
     private val _uiState = MutableStateFlow(JoinUiState())
     val uiState: StateFlow<JoinUiState> = _uiState.asStateFlow()
@@ -173,6 +178,9 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
     // Existing functions
     
     fun startScanning(connectionType: ConnectionType = ConnectionType.WiFiDirect) {
+        // Store the current connection type
+        currentConnectionType = connectionType
+        
         if (!permissionHandler.hasAllPermissions()) {
             return
         }
@@ -211,6 +219,12 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
                         _uiState.value = _uiState.value.copy(
                             isConnected = true,
                             connectedHostName = device.name
+                        )
+                        
+                        // Start session notification
+                        sessionManager.startJoinSession(
+                            roomCode = device.name, // Using device name as room identifier
+                            connectionType = currentConnectionType
                         )
                         
                         syncManager = SyncManager(
@@ -256,6 +270,9 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
                 bufferLevel = 0f,
                 playbackLatency = 0L
             )
+            
+            // Stop session notification
+            sessionManager.stopSession()
         }
     }
     
@@ -289,6 +306,7 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
         
         // Clean up existing resources
         audioStreamer.release()
+        sessionManager.cleanup()
         viewModelScope.launch {
             networkManager.disconnect()
         }

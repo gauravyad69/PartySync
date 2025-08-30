@@ -16,6 +16,7 @@ import io.github.gauravyad69.partysync.network.ConnectionState
 import io.github.gauravyad69.partysync.network.ConnectionType
 import io.github.gauravyad69.partysync.network.NetworkConnection
 import io.github.gauravyad69.partysync.network.NetworkManager
+import io.github.gauravyad69.partysync.session.SessionManager
 import io.github.gauravyad69.partysync.sync.SyncManager
 import io.github.gauravyad69.partysync.utils.DeviceConfigManager
 import io.github.gauravyad69.partysync.utils.DeviceStatus
@@ -55,6 +56,9 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     private val audioCaptureManager = AudioCaptureManager()
     private val audioStreamProtocol = AudioStreamProtocol()
     private val audioStreamingManager = AudioStreamingManager(application, audioStreamProtocol)
+    
+    // Session management
+    private val sessionManager = SessionManager(application)
     
     private var currentConnection: NetworkConnection? = null
     private var syncManager: SyncManager? = null
@@ -131,6 +135,9 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                 streamingClients = emptySet()
             )
             
+            // Stop session notification
+            sessionManager.stopSession()
+            
             Log.d("HostViewModel", "All connections cleaned up successfully")
         } catch (e: Exception) {
             Log.e("HostViewModel", "Error during cleanup", e)
@@ -157,6 +164,8 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             audioStreamingManager.connectedClients.collectLatest { clients ->
                 _uiState.value = _uiState.value.copy(streamingClients = clients)
+                // Update session notification with client count
+                sessionManager.updateConnectedClients(clients.size)
             }
         }
         
@@ -247,6 +256,13 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                 if (result.isSuccess) {
                     Log.d("HostViewModel", "Host started successfully")
                     _uiState.value = _uiState.value.copy(isHosting = true)
+                    
+                    // Start session notification
+                    sessionManager.startHostSession(
+                        roomCode = _uiState.value.roomName,
+                        connectionType = _uiState.value.selectedConnectionType,
+                        streamingMode = _uiState.value.selectedStreamingMode
+                    )
                     
                     syncManager = SyncManager(
                         networkConnection = connection,
@@ -397,6 +413,9 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
             canChangeMode = false
         )
         
+        // Update session notification
+        sessionManager.updateStreamingState(true)
+        
         Log.d("HostViewModel", "Audio capture and streaming started for mode: $mode")
     }
     
@@ -413,6 +432,9 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
             canChangeMode = true,
             audioLevel = 0f
         )
+        
+        // Update session notification
+        sessionManager.updateStreamingState(false)
         
         Log.d("HostViewModel", "Audio capture and streaming stopped")
     }
@@ -595,6 +617,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         
         // Clean up existing resources
         audioStreamer.release()
+        sessionManager.cleanup()
         viewModelScope.launch {
             networkManager.disconnect()
         }

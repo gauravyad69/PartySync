@@ -7,6 +7,8 @@ import android.util.Log
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 /**
  * Manages microphone audio capture for live streaming
@@ -210,12 +212,12 @@ class MicrophoneAudioManager {
             i += 2
         }
         
-        val rms = kotlin.math.sqrt(sum.toDouble() / (length / 2))
+        val rms = sqrt(sum.toDouble() / (length / 2))
         // Make it more sensitive by amplifying and using a lower divisor
         val normalizedLevel = (rms / 16384.0).coerceIn(0.0, 1.0) // Changed from 32768 to 16384
         
         // Apply additional sensitivity boost for quiet sounds
-        val sensitiveLevel = kotlin.math.pow(normalizedLevel, 0.6) // Power curve for better visualization
+        val sensitiveLevel = normalizedLevel.pow(0.6) // Power curve for better visualization
         
         return sensitiveLevel.toFloat()
     }
