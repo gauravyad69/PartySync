@@ -3,6 +3,7 @@ package io.github.gauravyad69.partysync.network
 import kotlinx.coroutines.flow.Flow
 
 enum class ConnectionType(val displayName: String) {
+    Bluetooth("Bluetooth"),
     WiFiDirect("WiFi Direct"),
     LocalHotspot("Local Hotspot")
 }

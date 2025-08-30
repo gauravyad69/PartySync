@@ -1,5 +1,7 @@
 package io.github.gauravyad69.partysync.utils
 
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
@@ -19,7 +21,46 @@ class DeviceConfigManager(private val context: Context) {
     
     private val wifiManager = context.getSystemService(Context.WIFI_SERVICE) as WifiManager
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
+    private val bluetoothAdapter: BluetoothAdapter? = bluetoothManager.adapter
     
+    /**
+     * Prepares the device for Bluetooth audio sharing
+     * Returns true if device is ready, false if manual intervention needed
+     */
+    suspend fun prepareForBluetooth(): Result<Boolean> {
+        return try {
+            Log.d(TAG, "Preparing device for Bluetooth...")
+            
+            // Step 1: Check if Bluetooth is supported
+            if (bluetoothAdapter == null) {
+                return Result.failure(Exception("Bluetooth is not supported on this device"))
+            }
+            
+            // Step 2: Check if Bluetooth is enabled
+            if (!bluetoothAdapter.isEnabled) {
+                Log.d(TAG, "Bluetooth is not enabled")
+                return Result.failure(Exception("Please enable Bluetooth in Settings and try again"))
+            }
+            
+            // Step 3: Verify Bluetooth is ready for connections
+            if (bluetoothAdapter.state != BluetoothAdapter.STATE_ON) {
+                Log.d(TAG, "Bluetooth is not fully ready, waiting...")
+                delay(2000)
+                
+                if (bluetoothAdapter.state != BluetoothAdapter.STATE_ON) {
+                    return Result.failure(Exception("Bluetooth is not ready. Please wait and try again"))
+                }
+            }
+            
+            Log.d(TAG, "Bluetooth preparation complete and ready")
+            Result.success(true)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error preparing device for Bluetooth", e)
+            Result.failure(e)
+        }
+    }
+
     /**
      * Prepares the device for creating a Local Hotspot
      * Returns true if device is ready, false if manual intervention needed
@@ -161,7 +202,9 @@ class DeviceConfigManager(private val context: Context) {
             connectedNetworkName = getConnectedNetworkName(),
             canModifyWiFi = canModifyWiFiState(),
             hotspotSupported = isHotspotSupported(),
-            wifiDirectSupported = isWiFiDirectSupported()
+            wifiDirectSupported = isWiFiDirectSupported(),
+            bluetoothSupported = isBluetoothSupported(),
+            bluetoothEnabled = isBluetoothEnabled()
         )
     }
     
@@ -219,6 +262,14 @@ class DeviceConfigManager(private val context: Context) {
         return context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_WIFI_DIRECT)
     }
     
+    private fun isBluetoothSupported(): Boolean {
+        return bluetoothAdapter != null
+    }
+    
+    private fun isBluetoothEnabled(): Boolean {
+        return bluetoothAdapter?.isEnabled == true
+    }
+    
     /**
      * Reset WiFi Direct state to clear busy conditions
      */
@@ -248,5 +299,7 @@ data class DeviceStatus(
     val connectedNetworkName: String?,
     val canModifyWiFi: Boolean,
     val hotspotSupported: Boolean,
-    val wifiDirectSupported: Boolean
+    val wifiDirectSupported: Boolean,
+    val bluetoothSupported: Boolean,
+    val bluetoothEnabled: Boolean
 )
