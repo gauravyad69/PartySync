@@ -222,7 +222,7 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
                         
                         // Start audio playback automatically when connected
                         // Assume audio is streamed on the same IP as the device
-                        startAudioPlayback(device.ipAddress)
+                        startAudioPlayback(device.address)
                         
                         Log.d("JoinViewModel", "Successfully joined host: ${device.name}")
                     }
@@ -278,12 +278,6 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = _uiState.value.copy(playbackState = playback)
             }
         }
-    }
-    
-    fun requestPermissions() {
-        // This would typically trigger a permission request in the UI
-        // For now, we'll just recheck permissions
-        checkPermissions()
     }
     
     override fun onCleared() {

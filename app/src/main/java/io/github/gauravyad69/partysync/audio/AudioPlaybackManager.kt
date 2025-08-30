@@ -9,7 +9,7 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.util.concurrent.ConcurrentLinkedQueue
-import java.util.concurrent.PriorityQueue
+import java.util.PriorityQueue
 import kotlin.math.max
 import kotlin.math.min
 
@@ -36,7 +36,9 @@ class AudioPlaybackManager {
     private val playbackScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
     // Audio buffer management
-    private val audioBuffer = PriorityQueue<AudioPacket>(compareBy { it.sequenceNumber })
+    private val audioBuffer = PriorityQueue<AudioPacket> { a, b -> 
+        a.sequenceNumber.compareTo(b.sequenceNumber) 
+    }
     private val bufferLock = Any()
     
     // State management
@@ -224,7 +226,7 @@ class AudioPlaybackManager {
     private suspend fun playbackLoop() {
         val playBuffer = ByteArray(getTargetBufferSizeBytes())
         
-        while (isActive && _isPlaying.value) {
+        while (currentCoroutineContext().isActive && _isPlaying.value) {
             try {
                 val audioData = getNextAudioChunk(playBuffer.size)
                 
@@ -256,7 +258,7 @@ class AudioPlaybackManager {
                 delay(5)
                 
             } catch (e: Exception) {
-                if (isActive) {
+                if (currentCoroutineContext().isActive) {
                     Log.e(tag, "Error in playback loop", e)
                 }
             }
@@ -323,7 +325,7 @@ class AudioPlaybackManager {
         val totalBytes = audioBuffer.sumOf { it.audioData.size }
         val bytesPerSecond = SAMPLE_RATE * 2 // 16-bit mono
         return if (bytesPerSecond > 0) {
-            (totalBytes * 1000) / bytesPerSecond
+            (totalBytes.toLong() * 1000L / bytesPerSecond.toLong()).toInt()
         } else 0
     }
     
@@ -332,14 +334,14 @@ class AudioPlaybackManager {
      */
     private fun getTargetBufferSizeBytes(): Int {
         val bytesPerSecond = SAMPLE_RATE * 2 // 16-bit mono
-        return (bytesPerSecond * TARGET_BUFFER_MS) / 1000
+        return (bytesPerSecond.toLong() * TARGET_BUFFER_MS.toLong() / 1000L).toInt()
     }
     
     /**
      * Get maximum buffer size in packets
      */
     private fun getMaxBufferPackets(): Int {
-        val targetBytes = (SAMPLE_RATE * 2 * MAX_BUFFER_MS) / 1000
+        val targetBytes = (SAMPLE_RATE.toLong() * 2L * MAX_BUFFER_MS.toLong() / 1000L).toInt()
         val avgPacketSize = 1000 // Approximate audio packet size
         return maxOf(10, targetBytes / avgPacketSize)
     }
