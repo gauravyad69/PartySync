@@ -10,7 +10,10 @@ enum class ConnectionType(val displayName: String) {
 
 sealed class ConnectionState {
     object Disconnected : ConnectionState()
-    object Connecting : ConnectionState()
+    data class Connecting(
+        val message: String = "Connecting...",
+        val progress: Float = 0f // 0.0 to 1.0
+    ) : ConnectionState()
     object Connected : ConnectionState()
     data class Error(val message: String) : ConnectionState()
 }

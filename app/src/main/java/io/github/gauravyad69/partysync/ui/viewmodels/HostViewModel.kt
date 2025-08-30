@@ -108,7 +108,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     /**
      * Clean up all connections and streaming
      */
-    private fun cleanupAllConnections() {
+    private suspend fun cleanupAllConnections() {
         try {
             // Stop audio streaming first
             audioStreamingManager.stopStreaming()
@@ -187,25 +187,30 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
         
         viewModelScope.launch {
             try {
-                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting)
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Initializing...", 0.1f))
                 
                 // Step 0: Clean up any existing connections first
                 Log.d("HostViewModel", "Cleaning up existing connections before starting...")
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Cleaning up existing connections...", 0.2f))
                 cleanupAllConnections()
                 delay(500) // Give cleanup time to complete
                 
                 // Step 1: Prepare device for the selected connection type
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Preparing device...", 0.3f))
                 val preparationResult = when (_uiState.value.selectedConnectionType) {
                     ConnectionType.Bluetooth -> {
                         Log.d("HostViewModel", "Preparing device for Bluetooth...")
+                        _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Configuring Bluetooth...", 0.4f))
                         deviceConfigManager.prepareForBluetooth()
                     }
                     ConnectionType.LocalHotspot -> {
                         Log.d("HostViewModel", "Preparing device for Local Hotspot...")
+                        _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Setting up WiFi hotspot...", 0.4f))
                         deviceConfigManager.prepareForLocalHotspot()
                     }
                     ConnectionType.WiFiDirect -> {
                         Log.d("HostViewModel", "Preparing device for WiFi Direct...")
+                        _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Disconnecting from WiFi...", 0.4f))
                         deviceConfigManager.prepareForWiFiDirect()
                     }
                 }
@@ -220,6 +225,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 
                 // Step 2: Create connection and start hosting
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting("Creating connection...", 0.6f))
                 val connection = networkManager.createConnection(_uiState.value.selectedConnectionType)
                 currentConnection = connection
                 
@@ -227,6 +233,14 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
                 
                 val roomName = _uiState.value.roomName.ifEmpty { "Room_${System.currentTimeMillis()}" }
                 Log.d("HostViewModel", "Attempting to start host with connection type: ${_uiState.value.selectedConnectionType}")
+                
+                _uiState.value = _uiState.value.copy(connectionState = ConnectionState.Connecting(
+                    when (_uiState.value.selectedConnectionType) {
+                        ConnectionType.Bluetooth -> "Starting Bluetooth server..."
+                        ConnectionType.WiFiDirect -> "Creating WiFi Direct group..."
+                        ConnectionType.LocalHotspot -> "Starting WiFi hotspot..."
+                    }, 0.8f
+                ))
                 
                 val result = connection.startHost(roomName)
                 
