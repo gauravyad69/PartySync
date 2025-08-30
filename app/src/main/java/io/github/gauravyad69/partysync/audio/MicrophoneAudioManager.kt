@@ -34,6 +34,10 @@ class MicrophoneAudioManager {
     private val _audioLevel = MutableStateFlow(0f)
     val audioLevel: StateFlow<Float> = _audioLevel
     
+    // Smooth audio level for better visualization
+    private var smoothedAudioLevel = 0f
+    private val audioLevelSmoothingFactor = 0.3f // Higher = more responsive
+    
     private val _microphoneGain = MutableStateFlow(1.0f)
     val microphoneGain: StateFlow<Float> = _microphoneGain
     
@@ -113,9 +117,11 @@ class MicrophoneAudioManager {
                         // Apply microphone gain
                         val processedAudio = applyMicrophoneGain(buffer, bytesRead)
                         
-                        // Calculate audio level
-                        val audioLevel = calculateAudioLevel(processedAudio, bytesRead)
-                        _audioLevel.value = audioLevel
+                        // Calculate audio level with smoothing
+                        val rawAudioLevel = calculateAudioLevel(processedAudio, bytesRead)
+                        smoothedAudioLevel = (audioLevelSmoothingFactor * rawAudioLevel) + 
+                                           ((1f - audioLevelSmoothingFactor) * smoothedAudioLevel)
+                        _audioLevel.value = smoothedAudioLevel
                         
                         // Send processed audio
                         onAudioDataCaptured?.invoke(processedAudio.copyOf(bytesRead))
@@ -151,6 +157,7 @@ class MicrophoneAudioManager {
         }
         
         _audioLevel.value = 0f
+        smoothedAudioLevel = 0f
         onAudioDataCaptured = null
     }
     
@@ -188,7 +195,7 @@ class MicrophoneAudioManager {
     }
     
     /**
-     * Calculate audio level for visualization
+     * Calculate audio level for visualization with enhanced sensitivity
      */
     private fun calculateAudioLevel(buffer: ByteArray, length: Int): Float {
         if (length <= 0) return 0f
@@ -196,13 +203,21 @@ class MicrophoneAudioManager {
         var sum = 0L
         var i = 0
         while (i < length - 1) {
+            // Convert to 16-bit signed sample
             val sample = (buffer[i].toInt() and 0xFF) or (buffer[i + 1].toInt() shl 8)
-            sum += (sample * sample).toLong()
+            val signedSample = if (sample > 32767) sample - 65536 else sample
+            sum += (signedSample * signedSample).toLong()
             i += 2
         }
         
         val rms = kotlin.math.sqrt(sum.toDouble() / (length / 2))
-        return (rms / 32768.0).coerceIn(0.0, 1.0).toFloat()
+        // Make it more sensitive by amplifying and using a lower divisor
+        val normalizedLevel = (rms / 16384.0).coerceIn(0.0, 1.0) // Changed from 32768 to 16384
+        
+        // Apply additional sensitivity boost for quiet sounds
+        val sensitiveLevel = kotlin.math.pow(normalizedLevel, 0.6) // Power curve for better visualization
+        
+        return sensitiveLevel.toFloat()
     }
     
     /**
