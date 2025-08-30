@@ -14,6 +14,7 @@ import io.github.gauravyad69.partysync.network.ConnectionType
 import io.github.gauravyad69.partysync.network.NetworkConnection
 import io.github.gauravyad69.partysync.network.NetworkDevice
 import io.github.gauravyad69.partysync.network.NetworkManager
+import io.github.gauravyad69.partysync.network.wifi.WiFiDirectConnection
 import io.github.gauravyad69.partysync.session.SessionManager
 import io.github.gauravyad69.partysync.sync.SyncManager
 import io.github.gauravyad69.partysync.utils.PermissionHandler
@@ -124,6 +125,14 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
         
         if (!_uiState.value.isConnected) {
             Log.w("JoinViewModel", "Cannot start audio playback - not connected to host")
+            return
+        }
+        
+        Log.d("JoinViewModel", "Starting audio playback with host: $hostAddress:$port")
+        
+        // Validate that hostAddress looks like an IP address
+        if (!isValidIPAddress(hostAddress)) {
+            Log.e("JoinViewModel", "Invalid IP address: $hostAddress")
             return
         }
         
@@ -264,9 +273,21 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
                             scope = viewModelScope
                         )
                         
-                        // Start audio playback automatically when connected
-                        // Assume audio is streamed on the same IP as the device
-                        startAudioPlayback(device.address)
+                        // Start audio playback with the correct server IP
+                        // For WiFi Direct, wait for the server address to be available
+                        if (connection is WiFiDirectConnection) {
+                            viewModelScope.launch {
+                                connection.serverAddress.collectLatest { serverAddress ->
+                                    if (!serverAddress.isNullOrEmpty()) {
+                                        Log.d("JoinViewModel", "Using server address: $serverAddress")
+                                        startAudioPlayback(serverAddress)
+                                    }
+                                }
+                            }
+                        } else {
+                            // For other connection types, use device address (fallback)
+                            startAudioPlayback(device.address)
+                        }
                         
                         Log.d("JoinViewModel", "Successfully joined host: ${device.name}")
                     }
@@ -324,6 +345,20 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
             audioStreamer.getPlaybackState().collectLatest { playback: SyncedPlayback ->
                 _uiState.value = _uiState.value.copy(playbackState = playback)
             }
+        }
+    }
+    
+    private fun isValidIPAddress(address: String): Boolean {
+        return try {
+            val parts = address.split(".")
+            if (parts.size != 4) return false
+            parts.forEach { part ->
+                val num = part.toInt()
+                if (num < 0 || num > 255) return false
+            }
+            true
+        } catch (e: Exception) {
+            false
         }
     }
     

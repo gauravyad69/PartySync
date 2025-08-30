@@ -48,6 +48,9 @@ class WiFiDirectConnection(
     private val _connectionState = MutableStateFlow<ConnectionState>(ConnectionState.Disconnected)
     override val connectionState: Flow<ConnectionState> = _connectionState.asStateFlow()
     
+    private val _serverAddress = MutableStateFlow<String?>(null)
+    val serverAddress: Flow<String?> = _serverAddress.asStateFlow()
+    
     override val connectionType: ConnectionType = ConnectionType.WiFiDirect
     
     private var isHost = false
@@ -311,8 +314,11 @@ class WiFiDirectConnection(
                 _connectionState.value = ConnectionState.Connected
                 
                 if (!isHost && it.groupOwnerAddress != null) {
+                    val hostAddress = it.groupOwnerAddress.hostAddress
+                    _serverAddress.value = hostAddress  // Store the server address
+                    
                     // Connect to host as client
-                    connectToServer(it.groupOwnerAddress.hostAddress)
+                    connectToServer(hostAddress)
                 }
             }
         }
