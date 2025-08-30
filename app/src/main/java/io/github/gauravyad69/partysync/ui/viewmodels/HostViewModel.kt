@@ -145,8 +145,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     private fun initializeAudioStreaming() {
-        // Initialize audio capture manager
-        audioCaptureManager.initialize()
+        // AudioStreamingManager handles its own initialization
         
         // Observe audio streaming states
         viewModelScope.launch {
@@ -612,7 +611,7 @@ class HostViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         // Clean up audio streaming resources
-        audioCaptureManager.release()
+        audioStreamingManager.release()
         audioStreamProtocol.stop()
         
         // Clean up existing resources

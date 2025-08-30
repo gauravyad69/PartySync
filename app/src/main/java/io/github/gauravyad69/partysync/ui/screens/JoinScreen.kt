@@ -663,9 +663,8 @@ private fun ConnectedScreen(
                             if (uiState.isPlayingAudio) {
                                 viewModel.stopAudioPlayback()
                             } else {
-                                // Restart playback - assume we know the host address from connection
-                                // This is a simplified approach - in real implementation we'd store this
-                                viewModel.startAudioPlayback("192.168.1.100") // Placeholder
+                                // Restart playback using the stored host address
+                                viewModel.restartAudioPlayback()
                             }
                         },
                         modifier = Modifier.weight(1f),

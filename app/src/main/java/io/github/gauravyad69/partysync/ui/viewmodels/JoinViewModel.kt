@@ -30,6 +30,7 @@ data class JoinUiState(
     val isScanning: Boolean = false,
     val isConnected: Boolean = false,
     val connectedHostName: String = "",
+    val connectedHostAddress: String = "",
     val playbackState: SyncedPlayback? = null,
     val hasPermissions: Boolean = false,
     // New audio playback states
@@ -154,6 +155,18 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
+     * Restart audio playback with the currently connected host
+     */
+    fun restartAudioPlayback() {
+        val hostAddress = _uiState.value.connectedHostAddress
+        if (hostAddress.isNotEmpty()) {
+            startAudioPlayback(hostAddress)
+        } else {
+            Log.w("JoinViewModel", "No host address available for restart")
+        }
+    }
+    
+    /**
      * Clear audio buffer (useful for resync)
      */
     fun clearAudioBuffer() {
@@ -217,11 +230,11 @@ class JoinViewModel(application: Application) : AndroidViewModel(application) {
                     
                     if (result.isSuccess) {
                         _uiState.value = _uiState.value.copy(
+                            connectionState = ConnectionState.Connected,
                             isConnected = true,
-                            connectedHostName = device.name
-                        )
-                        
-                        // Start session notification
+                            connectedHostName = device.name,
+                            connectedHostAddress = device.address
+                        )                        // Start session notification
                         sessionManager.startJoinSession(
                             roomCode = device.name, // Using device name as room identifier
                             connectionType = currentConnectionType
